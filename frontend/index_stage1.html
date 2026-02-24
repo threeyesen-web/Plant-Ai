@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantAI - Smart Growth Assessment</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-orb"></div>
+    <div class="background-orb orb-2"></div>
+
+    <main class="container">
+        <header>
+            <h1>PlantAI</h1>
+            <p>Intelligent Growth Condition Assessment</p>
+        </header>
+
+        <div class="content-grid">
+            <section class="glass-panel form-panel">
+                <h2>Plant Details</h2>
+                <form id="assessmentForm">
+                    <div class="form-group">
+                        <label for="plant_type">Plant Type</label>
+                        <input id="plant_type" type="text" required placeholder="Type your plant name (e.g., rice)">
+                    </div>
+
+                    <div class="section-divider">Environment</div>
+
+                    <div class="form-group">
+                        <label for="city">City / Location (Optional)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="city" placeholder="Enter city for auto-weather">
+                            <button type="button" id="fetchWeatherBtn"
+                                style="margin-top: 0; width: auto; white-space: nowrap;">Fetch Data</button>
+                        </div>
+                    </div>
+
+                    <div class="input-grid three-col">
+                        <div class="form-group">
+                            <label for="temperature">Temp (°C)</label>
+                            <input type="number" id="temperature" step="0.1" placeholder="25.0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="humidity">Humid (%)</label>
+                            <input type="number" id="humidity" step="1" placeholder="60" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="rainfall">Rain (mm)</label>
+                            <input type="number" id="rainfall" step="1" placeholder="100" required>
+                        </div>
+                    </div>
+
+                    <div class="section-divider">Soil Attributes</div>
+
+                    <div class="form-group">
+                        <label for="ph">pH Level</label>
+                        <input type="number" id="ph" step="0.1" placeholder="6.5" required>
+                    </div>
+
+                    <div class="input-grid three-col">
+                        <div class="form-group">
+                            <label for="nitrogen">Nitrogen (N)</label>
+                            <input type="number" id="nitrogen" step="1" placeholder="50" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phosphorus">Phosphorus (P)</label>
+                            <input type="number" id="phosphorus" step="1" placeholder="50" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="potassium">Potassium (K)</label>
+                            <input type="number" id="potassium" step="1" placeholder="50" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="analyzeBtn">Analyze Health</button>
+                </form>
+            </section>
+
+            <section class="glass-panel results-panel" id="resultsPanel">
+                <div class="placeholder-content">
+                    <div class="icon-plant">🌿</div>
+                    <h3>Ready to Assess</h3>
+                    <p>Enter your plant's data to receive an AI-powered growth analysis.</p>
+                </div>
+
+                <div class="results-content hidden" id="resultsContent">
+                    <div class="score-ring-container">
+                        <svg class="progress-ring" width="120" height="120">
+                            <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.1)" stroke-width="8"
+                                fill="transparent" r="52" cx="60" cy="60" />
+                            <circle class="progress-ring__circle" stroke="#00d26a" stroke-width="8" fill="transparent"
+                                r="52" cx="60" cy="60" />
+                        </svg>
+                        <div class="score-value">
+                            <span id="suitabilityValue">0</span>%
+                        </div>
+                        <div class="score-label">Suitability</div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="metric-label">Stress Level</span>
+                            <span class="metric-value" id="stressValue">-</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">Care Priority</span>
+                            <span class="metric-value" id="careValue">-</span>
+                        </div>
+                    </div>
+
+                    <div class="status-message" id="statusMessage">
+                        <!-- Dynamic message based on results -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="static/script.js"></script>
+</body>
+
+</html>
