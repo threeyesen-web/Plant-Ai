@@ -24,6 +24,8 @@ const careValue = document.getElementById('careValue');
 const statusMessage = document.getElementById('statusMessage');
 const smartAdvisory = document.getElementById('smartAdvisory');
 const recommendationList = document.getElementById('recommendationList');
+const ANALYZE_DEFAULT_LABEL = 'Diagonose';
+const ANALYZE_LOADING_LABEL = 'Diagonosing...';
 
 // === SMART PRESETS & MAPPING ===
 const SOIL_PRESETS = {
@@ -53,12 +55,9 @@ const passwordToggle = document.getElementById('passwordToggle');
 const API_BASE = '/api';
 
 let isRegister = false;
+let landingHeaderWasInView = false;
 
-function initHeroWordAnimation() {
-    const animatedLines = [
-        { selector: '.sproutx-hero h1', lineDelayMs: 120 },
-        { selector: '.sproutx-hero p', lineDelayMs: 420 }
-    ];
+function initHeroWordAnimation(animatedLines) {
 
     animatedLines.forEach(({ selector, lineDelayMs }) => {
         const el = document.querySelector(selector);
@@ -87,7 +86,39 @@ function initHeroWordAnimation() {
     });
 }
 
-initHeroWordAnimation();
+initHeroWordAnimation([
+    { selector: '.sproutx-hero h1', lineDelayMs: 120 },
+    { selector: '.sproutx-hero p', lineDelayMs: 420 }
+]);
+
+function replayLandingHeaderAnimation() {
+    initHeroWordAnimation([
+        { selector: '.modern-brand p', lineDelayMs: 680 }
+    ]);
+}
+
+function setupLandingHeaderReplayOnScroll() {
+    const landingHeader = document.querySelector('.modern-header');
+    if (!landingHeader || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            const isInView = entry.isIntersecting && entry.intersectionRatio >= 0.45;
+
+            if (isInView && !landingHeaderWasInView) {
+                replayLandingHeaderAnimation();
+            }
+
+            landingHeaderWasInView = isInView;
+        });
+    }, {
+        threshold: [0.45]
+    });
+
+    observer.observe(landingHeader);
+}
+
+setupLandingHeaderReplayOnScroll();
 
 function enterApp(message) {
     clearAuthMessage();
@@ -95,6 +126,20 @@ function enterApp(message) {
     setTimeout(() => {
         loginOverlay.style.display = 'none';
         mainApp.style.display = '';
+
+        // Start landing text animation only after layout is painted.
+        requestAnimationFrame(() => {
+            replayLandingHeaderAnimation();
+        });
+
+        // Fallback: ensure landing words are visible even if animation is skipped.
+        setTimeout(() => {
+            document.querySelectorAll('.modern-brand .hero-word').forEach((node) => {
+                node.style.opacity = '1';
+                node.style.transform = 'none';
+                node.style.filter = 'none';
+            });
+        }, 2200);
         alert(message);
     }, 400);
 }
@@ -111,6 +156,30 @@ function clearAuthMessage() {
     setAuthMessage('');
 }
 
+function setAnalyzeButtonLoading(isLoading) {
+    if (!analyzeBtn) return;
+
+    if (isLoading) {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('is-loading');
+        analyzeBtn.innerHTML = `
+            <span class="lab-loader" aria-hidden="true">
+                <span class="scan-core">
+                    <i class="scan-ring r1"></i>
+                    <i class="scan-ring r2"></i>
+                    <i class="scan-leaf"></i>
+                </span>
+            </span>
+            <span class="btn-label">${ANALYZE_LOADING_LABEL}</span>
+        `;
+        return;
+    }
+
+    analyzeBtn.classList.remove('is-loading');
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = ANALYZE_DEFAULT_LABEL;
+}
+
 function bindToggleAuth() {
     const toggle = document.getElementById('toggleAuth');
     const submitBtn = loginForm?.querySelector('.login-btn');
@@ -125,10 +194,10 @@ function bindToggleAuth() {
             toggleText.innerHTML = 'Already have an account? <a href="#" id="toggleAuth">Log in</a>';
             if (submitBtn) submitBtn.textContent = 'Register';
         } else {
-            loginTitle.textContent = 'Log In';
+            loginTitle.textContent = 'Login';
             if (loginSubtitle) loginSubtitle.textContent = 'Log in to monitor and manage your plants.';
             toggleText.innerHTML = 'New to Plant AI? <a href="#" id="toggleAuth">Create account</a>';
-            if (submitBtn) submitBtn.textContent = 'Log In';
+            if (submitBtn) submitBtn.textContent = 'Login';
         }
         clearAuthMessage();
         bindToggleAuth();
@@ -284,12 +353,12 @@ if (loginForm) {
             if (!response.ok) {
                 if (!isRegister && data.requiresGoogleSignIn) {
                     triggerGoogleSignInFromManualLogin();
-                    btn.textContent = 'Log In';
+                    btn.textContent = 'Login';
                     btn.disabled = false;
                     return;
                 }
                 setAuthMessage(data.message || 'Authentication failed', 'error');
-                btn.textContent = isRegister ? 'Register' : 'Log In';
+                btn.textContent = isRegister ? 'Register' : 'Login';
                 btn.disabled = false;
                 return;
             }
@@ -306,8 +375,7 @@ if (loginForm) {
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    analyzeBtn.textContent = 'Analyzing...';
-    analyzeBtn.disabled = true;
+    setAnalyzeButtonLoading(true);
 
     const region = document.getElementById('region').value;
     const soilType = document.querySelector('input[name="soil_type"]:checked').value;
@@ -404,8 +472,7 @@ form.addEventListener('submit', async (e) => {
         console.error(error);
         alert('Analysis Failed');
     } finally {
-        analyzeBtn.textContent = 'Analyze';
-        analyzeBtn.disabled = false;
+        setAnalyzeButtonLoading(false);
     }
 });
 

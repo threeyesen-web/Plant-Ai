@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plant AI - Kerala Edition</title>
     <link rel="stylesheet" href="static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
@@ -67,7 +66,7 @@
 
                         <p id="authMessage" class="sproutx-auth-message" aria-live="polite"></p>
 
-                        <button type="submit" class="login-btn">Login to Dashboard</button>
+                        <button type="submit" class="login-btn">Login</button>
                     </form>
 
                     <div class="sproutx-divider"><span>Or continue with</span></div>
@@ -83,88 +82,210 @@
         </div>
     </div>
 
-    <div class="app-container" id="mainApp" style="display: none;">
-
-        <!-- Header -->
-        <header class="glass-header">
-            <div class="logo">
-                <span class="icon">🌿</span>
-                <h1>Plant AI <span style="font-size: 0.6em; color: var(--accent); opacity: 0.8;">Stage 2</span></h1>
-            </div>
-        </header>
-
-        <main class="content-grid">
-
-            <!-- Center: Input Form -->
-            <section class="glass-panel form-panel">
-                <h2>Health Assessment</h2>
-                <form id="assessmentForm">
-
-                    <!-- Region Selector -->
-                    <div class="form-group" style="margin-bottom: 25px;">
-                        <label for="region">Region Context</label>
-                        <select id="region" required style="border: 2px solid var(--accent);">
-                            <option value="Kerala" selected>Kerala (Tropical Wet)</option>
-                            <option value="Rest of India">Rest of India (Generic)</option>
-                            <option value="Other">Other / Global</option>
-                        </select>
+    <div class="app-container modern-app" id="mainApp" style="display: none;">
+        <main class="modern-main">
+            <header class="modern-header">
+                <div class="modern-brand">
+                    <div class="modern-brand-icon">&#127807;</div>
+                    <div>
+                        <h1 class="landing-brand-title">SproutX</h1>
+                        <p>Analyze. Optimize. Flourish.</p>
                     </div>
+                </div>
+            </header>
 
-                    <div class="form-group">
-                        <label for="plant_type">Plant Type</label>
-                        <input id="plant_type" type="text" required placeholder="Type your plant name (e.g., rice)">
+            <form id="assessmentForm" class="modern-form">
+                <section class="modern-section">
+                    <div class="modern-section-head">
+                        <span>1</span>
+                        <h2>General Details</h2>
                     </div>
-
-                    <div class="section-divider">Environment</div>
-
-                    <div class="form-group">
-                        <label for="city">City / Location</label>
-                        <input type="text" id="city" placeholder="Ex: Kochi" required style="width: 100%;">
-                    </div>
-
-                    <!-- Hidden Scientific Inputs (Auto-filled) -->
-                    <div id="scientific-inputs" style="display:none;">
-                        <input type="number" id="temperature" step="0.1">
-                        <input type="number" id="humidity" step="1">
-                        <input type="number" id="rainfall" step="1">
-                    </div>
-
-                    <!-- User Friendly Inputs -->
-                    <div class="input-grid">
-                        <div class="form-group">
-                            <label>Soil Type</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="soil_type" value="sandy"> Sandy</label>
-                                <label><input type="radio" name="soil_type" value="clay"> Clay</label>
-                                <label><input type="radio" name="soil_type" value="loamy"> Loamy</label>
-                                <label><input type="radio" name="soil_type" value="red" checked> Red Laterite</label>
-                            </div>
+                    <div class="modern-grid two">
+                        <div class="modern-field">
+                            <label for="region">Region Context</label>
+                            <select id="region" required>
+                                <option value="Kerala" selected>Kerala (Tropical Wet)</option>
+                                <option value="Rest of India">Rest of India (Generic)</option>
+                                <option value="Other">Other / Global</option>
+                            </select>
                         </div>
-
-                        <div class="form-group">
-                            <label>Water Availability</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="watering" value="low"> Low (3-4 Days)</label>
-                                <label><input type="radio" name="watering" value="medium" checked> Medium (2
-                                    Days)</label>
-                                <label><input type="radio" name="watering" value="high"> High (Daily)</label>
-                            </div>
+                        <div class="modern-field">
+                            <label for="plant_type">Plant Type / Species</label>
+                            <input id="plant_type" type="text" required placeholder="e.g. Rice, Tulsi, Aloe Vera">
                         </div>
-
-                        <div class="form-group">
-                            <label>Plant Location</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="location" value="indoor"> Indoor</label>
-                                <label><input type="radio" name="location" value="outdoor" checked> Outdoor</label>
-                            </div>
+                        <div class="modern-field full">
+                            <label for="city">Environment Details (City / Location)</label>
+                            <input type="text" id="city" required placeholder="e.g. Kochi">
                         </div>
                     </div>
+                </section>
 
-                    <button type="submit" id="analyzeBtn">Analyze</button>
-                </form>
-            </section>
+                <section class="modern-section">
+                    <div class="modern-section-head">
+                        <span>2</span>
+                        <h2>Growth Medium &amp; Hydration</h2>
+                    </div>
+
+                    <div class="modern-field">
+                        <label>Soil Type</label>
+                        <div class="choice-grid soil-grid">
+                            <label class="choice-card">
+                                <input type="radio" name="soil_type" value="sandy">
+                                <span class="soil-icon-shell sandy" aria-hidden="true">
+                                    <svg class="soil-icon-mix" viewBox="0 0 24 24">
+                                        <circle cx="8" cy="8" r="2.3" class="fill-part" />
+                                        <path d="M4 16h16M7 13l2-2 2 2 2-2 2 2 2-2" class="line-part" />
+                                    </svg>
+                                </span>
+                                <span>Sandy</span>
+                            </label>
+                            <label class="choice-card">
+                                <input type="radio" name="soil_type" value="clay">
+                                <span class="soil-icon-shell clay" aria-hidden="true">
+                                    <svg class="soil-icon-mix" viewBox="0 0 24 24">
+                                        <rect x="4.5" y="6" width="6.5" height="5" rx="1.2" class="fill-part" />
+                                        <rect x="13" y="6" width="6.5" height="5" rx="1.2" class="line-part" />
+                                        <rect x="4.5" y="13" width="6.5" height="5" rx="1.2" class="line-part" />
+                                        <rect x="13" y="13" width="6.5" height="5" rx="1.2" class="fill-part" />
+                                    </svg>
+                                </span>
+                                <span>Clay</span>
+                            </label>
+                            <label class="choice-card">
+                                <input type="radio" name="soil_type" value="loamy">
+                                <span class="soil-icon-shell loamy" aria-hidden="true">
+                                    <svg class="soil-icon-mix" viewBox="0 0 24 24">
+                                        <path d="M12 19V10" class="line-part loamy-stem" />
+                                        <path d="M12 12c-3 0-5-2-5-5 3 0 5 2 5 5Z" class="fill-part loamy-leaf-left" />
+                                        <path d="M12 12c3 0 5-2 5-5-3 0-5 2-5 5Z" class="line-part loamy-leaf-right" />
+                                    </svg>
+                                </span>
+                                <span>Loamy</span>
+                            </label>
+                            <label class="choice-card">
+                                <input type="radio" name="soil_type" value="red" checked>
+                                <span class="soil-icon-shell laterite" aria-hidden="true">
+                                    <svg class="soil-icon-mix" viewBox="0 0 24 24">
+                                        <path d="M5 16l4-7h6l4 7H5Z" class="fill-part" />
+                                        <path d="M8 16h8M9.5 11h5" class="line-part" />
+                                    </svg>
+                                </span>
+                                <span>Laterite</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="modern-field">
+                        <label>Water Availability</label>
+                        <div class="choice-grid water-grid">
+                            <label class="choice-pill water-low">
+                                <input type="radio" name="watering" value="low">
+                                <span class="water-icon-shell low" aria-hidden="true">
+                                    <svg class="water-icon-mix" viewBox="0 0 24 24">
+                                        <path d="M12 4c2 3 4 5.2 4 8a4 4 0 0 1-8 0c0-2.8 2-5 4-8Z" class="fill-part" />
+                                        <path d="M12 4c2 3 4 5.2 4 8a4 4 0 0 1-8 0c0-2.8 2-5 4-8Z" class="line-part" />
+                                    </svg>
+                                </span>
+                                <span>Low</span>
+                                <span class="water-visual" aria-hidden="true">
+                                    <i class="drop"></i>
+                                    <i class="ripple"></i>
+                                </span>
+                            </label>
+                            <label class="choice-pill water-medium">
+                                <input type="radio" name="watering" value="medium" checked>
+                                <span class="water-icon-shell medium" aria-hidden="true">
+                                    <svg class="water-icon-mix" viewBox="0 0 24 24">
+                                        <path d="M7 10a3 3 0 0 1 5.6-1.3A3.4 3.4 0 1 1 16.8 15H8.3A2.8 2.8 0 1 1 7 10Z" class="fill-part" />
+                                        <path d="M8.3 15h8.5A3.4 3.4 0 1 0 12.6 8.7 3 3 0 0 0 7 10" class="line-part" />
+                                        <path d="M9 17.2v2.2M12 17.2v2.2M15 17.2v2.2" class="line-part" />
+                                    </svg>
+                                </span>
+                                <span>Medium</span>
+                                <span class="water-visual" aria-hidden="true">
+                                    <i class="rain r1"></i>
+                                    <i class="rain r2"></i>
+                                    <i class="rain r3"></i>
+                                    <i class="rain r4"></i>
+                                </span>
+                            </label>
+                            <label class="choice-pill water-high">
+                                <input type="radio" name="watering" value="high">
+                                <span class="water-icon-shell high" aria-hidden="true">
+                                    <svg class="water-icon-mix" viewBox="0 0 24 24">
+                                        <path d="M7 10a3 3 0 0 1 5.6-1.3A3.4 3.4 0 1 1 16.8 15H8.3A2.8 2.8 0 1 1 7 10Z" class="fill-part" />
+                                        <path d="M8.3 15h8.5A3.4 3.4 0 1 0 12.6 8.7 3 3 0 0 0 7 10" class="line-part" />
+                                        <path d="M13 16.6 10.7 20h2l-1.1 3.4 3.2-4.6h-2l.9-2.2Z" class="line-part bolt" />
+                                    </svg>
+                                </span>
+                                <span>High</span>
+                                <i class="high-bolt" aria-hidden="true">⚡</i>
+                                <span class="water-visual" aria-hidden="true">
+                                    <i class="storm-cloud"></i>
+                                    <i class="rain r1"></i>
+                                    <i class="rain r2"></i>
+                                    <i class="rain r3"></i>
+                                    <i class="rain r4"></i>
+                                    <i class="rain r5"></i>
+                                    <i class="rain r6"></i>
+                                    <i class="rain r7"></i>
+                                    <i class="rain r8"></i>
+                                    <i class="rain r9"></i>
+                                    <i class="rain r10"></i>
+                                    <i class="lightning l1"></i>
+                                    <i class="lightning l2"></i>
+                                    <i class="storm-flash"></i>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="modern-section">
+                    <div class="modern-section-head">
+                        <span>3</span>
+                        <h2>Plant Placement</h2>
+                    </div>
+
+                    <div class="choice-grid placement-grid">
+                        <label class="choice-row">
+                            <input type="radio" name="location" value="indoor">
+                            <span class="placement-icon-shell indoor" aria-hidden="true">
+                                <svg class="placement-icon-mix" viewBox="0 0 24 24">
+                                    <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1v-7.5Z" class="fill-part" />
+                                    <path d="M9.5 20v-5h5v5M4 11.5 12 5l8 6.5" class="line-part" />
+                                </svg>
+                            </span>
+                            <span>Indoor</span>
+                            <small>Controlled temperature, low wind</small>
+                        </label>
+                        <label class="choice-row">
+                            <input type="radio" name="location" value="outdoor" checked>
+                            <span class="placement-icon-shell outdoor" aria-hidden="true">
+                                <svg class="placement-icon-mix" viewBox="0 0 24 24">
+                                    <circle cx="17" cy="7" r="3" class="fill-part" />
+                                    <path d="M5 20h14M8.5 20v-4.5c0-1.7 1.4-3 3-3h1c1.6 0 3 1.3 3 3V20" class="line-part" />
+                                    <path d="M10 11.5 12 9.5l2 2" class="line-part" />
+                                </svg>
+                            </span>
+                            <span>Outdoor</span>
+                            <small>Natural light, variable weather</small>
+                        </label>
+                    </div>
+                </section>
+
+                <div id="scientific-inputs" style="display:none;">
+                    <input type="number" id="temperature" step="0.1">
+                    <input type="number" id="humidity" step="1">
+                    <input type="number" id="rainfall" step="1">
+                </div>
+
+                <div class="modern-submit-wrap">
+                    <button type="submit" id="analyzeBtn" class="modern-submit">Diagonose</button>
+                    <p>Analysis usually takes 5-10 seconds.</p>
+                </div>
+            </form>
         </main>
-
     </div>
 
     <!-- Result Modal -->
