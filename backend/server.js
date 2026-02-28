@@ -5,6 +5,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 require("./db");
 
 const authRoutes = require("./routes/auth");
+const plantRoutes = require("./routes/plants");
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 // routes
 app.use("/api", authRoutes);
+app.use("/api", plantRoutes);
 
 // test route (optional but useful)
 app.get("/", (req, res) => {

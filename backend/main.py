@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 import httpx
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 app = FastAPI(title="Plant Growth Assessment AI")
@@ -293,6 +294,94 @@ def build_recommendations(stress_level: str, feature_insights: dict, predicted_c
     return advisory, recommendations
 
 
+def build_fertilizer_plan(
+    stress_level: str,
+    care_priority: str,
+    avg_z_score: float,
+    feature_insights: dict,
+    dosage_guidance: list[str],
+    region: str
+):
+    n = feature_insights.get("N", {})
+    p = feature_insights.get("P", {})
+    k = feature_insights.get("K", {})
+
+    def is_low(item: dict):
+        return item.get("direction") == "low" and item.get("z_score", 0) >= 1.0
+
+    n_low = is_low(n)
+    p_low = is_low(p)
+    k_low = is_low(k)
+    low_count = int(n_low) + int(p_low) + int(k_low)
+
+    fertilizer_type = "balanced_npk"
+    fertilizer_name = "Balanced NPK fertilizer (19-19-19)"
+    reason = "Multiple nutrient deficiencies or uncertain imbalance detected."
+    search_term = "NPK 19-19-19 fertilizer 1kg for plants"
+
+    if low_count >= 2:
+        fertilizer_type = "balanced_npk"
+        fertilizer_name = "Balanced NPK fertilizer (19-19-19)"
+        reason = "Multiple nutrient deficiencies detected; balanced nutrition is safer."
+        search_term = "NPK 19-19-19 fertilizer 1kg for plants"
+    elif p_low:
+        fertilizer_type = "phosphorus_rich"
+        fertilizer_name = "Phosphorus-rich fertilizer (DAP/SSP)"
+        reason = "Phosphorus is below target in analysis."
+        search_term = "DAP fertilizer 1kg for plants"
+    elif k_low:
+        fertilizer_type = "potassium_rich"
+        fertilizer_name = "Potassium-rich fertilizer (MOP/SOP)"
+        reason = "Potassium is below target in analysis."
+        search_term = "potash fertilizer 1kg for plants"
+    elif n_low:
+        fertilizer_type = "nitrogen_rich"
+        fertilizer_name = "Nitrogen-rich fertilizer (Urea)"
+        reason = "Nitrogen is below target in analysis."
+        search_term = "urea fertilizer 1kg for plants"
+
+    recommendation = "YES"
+    strength = "standard-strength"
+    if stress_level == "High" or care_priority == "Urgent" or avg_z_score >= 2.0:
+        recommendation = "CAUTION"
+        strength = "half-strength"
+        fertilizer_type = "mild_recovery_feed"
+        fertilizer_name = "Mild balanced liquid fertilizer"
+        reason = "Plant stress is high; avoid strong fertilizers and use gentle recovery feeding."
+        search_term = "mild liquid fertilizer for stressed plants"
+    elif stress_level == "Medium" or avg_z_score >= 1.0:
+        recommendation = "CAUTION"
+        strength = "half-strength"
+
+    dosage_line = ""
+    if dosage_guidance:
+        dose_lines = [x for x in dosage_guidance if "dosage" in x.lower() or "fertilizer" in x.lower()]
+        dosage_line = dose_lines[0] if dose_lines else dosage_guidance[0]
+
+    application_plan = f"Apply {strength} in split dose; reassess plant response after 72 hours."
+    if dosage_line:
+        application_plan = f"{application_plan} {dosage_line}"
+
+    encoded = quote_plus(search_term)
+    buy_links = [
+        {
+            "label": "IndiaMART search",
+            "url": f"https://dir.indiamart.com/search.mp?ss={encoded}"
+        }
+    ]
+
+    return {
+        "recommendation": recommendation,
+        "fertilizer_type": fertilizer_type,
+        "fertilizer_name": fertilizer_name,
+        "search_term": search_term,
+        "summary": f"{fertilizer_name} recommended at {strength}.",
+        "application_plan": application_plan,
+        "reason": reason,
+        "buy_links": buy_links
+    }
+
+
 def _compute_indoor_score(plant: str, data: PlantData):
     profile = indoor_profiles.get(plant, {})
     if not profile:
@@ -370,6 +459,24 @@ def _compute_indoor_score(plant: str, data: PlantData):
         f"Watering baseline: {round(profile['water_amount_mean'])} ml every {round(profile['water_freq_mean'], 1)} day(s).",
         "Fertilizer baseline: half-strength balanced liquid feed every 2-4 weeks."
     ]
+    indoor_feature_insights = {
+        "temperature": {
+            "z_score": float(round(z_temp, 2)),
+            "direction": "high" if data.temperature > profile["temp_mean"] else "low"
+        },
+        "humidity": {
+            "z_score": float(round(z_humidity, 2)),
+            "direction": "high" if data.humidity > profile["humidity_mean"] else "low"
+        }
+    }
+    fertilizer_plan = build_fertilizer_plan(
+        stress_level=stress_level,
+        care_priority=care_priority,
+        avg_z_score=avg_z_score,
+        feature_insights=indoor_feature_insights,
+        dosage_guidance=dosage_guidance,
+        region=data.region
+    )
 
     recommendations_extended = recommendations + [
         f"[Today] {step}" for step in time_bound_actions["today"]
@@ -379,6 +486,8 @@ def _compute_indoor_score(plant: str, data: PlantData):
         f"[This Month] {step}" for step in time_bound_actions["this_month"]
     ] + [
         f"[Dosage] {line}" for line in dosage_guidance
+    ] + [
+        f"[Fertilizer] {fertilizer_plan['summary']}"
     ]
 
     return {
@@ -390,6 +499,7 @@ def _compute_indoor_score(plant: str, data: PlantData):
         "recommendations": recommendations_extended,
         "time_bound_actions": time_bound_actions,
         "dosage_guidance": dosage_guidance,
+        "fertilizer_plan": fertilizer_plan,
         "avg_z_score": float(round(avg_z_score, 2)),
         "top_risk_factors": [
             {
@@ -413,10 +523,10 @@ def _compute_indoor_score(plant: str, data: PlantData):
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 
-async def _proxy_get(path: str):
+async def _proxy_get(path: str, params: dict | None = None):
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{AUTH_API_BASE}{path}")
+            resp = await client.get(f"{AUTH_API_BASE}{path}", params=params)
         return JSONResponse(status_code=resp.status_code, content=resp.json())
     except Exception:
         return JSONResponse(status_code=502, content={"message": "Auth service unavailable"})
@@ -427,6 +537,15 @@ async def _proxy_post(path: str, request: Request):
         payload = await request.json()
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(f"{AUTH_API_BASE}{path}", json=payload)
+        return JSONResponse(status_code=resp.status_code, content=resp.json())
+    except Exception:
+        return JSONResponse(status_code=502, content={"message": "Auth service unavailable"})
+
+
+async def _proxy_delete(path: str, params: dict | None = None):
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.delete(f"{AUTH_API_BASE}{path}", params=params)
         return JSONResponse(status_code=resp.status_code, content=resp.json())
     except Exception:
         return JSONResponse(status_code=502, content={"message": "Auth service unavailable"})
@@ -450,6 +569,31 @@ async def api_register(request: Request):
 @app.post("/api/login")
 async def api_login(request: Request):
     return await _proxy_post("/api/login", request)
+
+
+@app.get("/api/plants")
+async def api_plants(request: Request):
+    return await _proxy_get("/api/plants", params=dict(request.query_params))
+
+
+@app.post("/api/plants")
+async def api_create_plant(request: Request):
+    return await _proxy_post("/api/plants", request)
+
+
+@app.get("/api/plants/{plant_id}/monitoring")
+async def api_plant_monitoring(plant_id: str, request: Request):
+    return await _proxy_get(f"/api/plants/{plant_id}/monitoring", params=dict(request.query_params))
+
+
+@app.post("/api/plants/{plant_id}/monitoring")
+async def api_add_plant_monitoring(plant_id: str, request: Request):
+    return await _proxy_post(f"/api/plants/{plant_id}/monitoring", request)
+
+
+@app.delete("/api/plants/{plant_id}")
+async def api_delete_plant(plant_id: str, request: Request):
+    return await _proxy_delete(f"/api/plants/{plant_id}", params=dict(request.query_params))
 
 @app.get("/weather")
 async def get_weather(city: str):
@@ -589,6 +733,14 @@ def predict_growth(data: PlantData):
         )
         time_bound_actions = build_time_bound_actions(stress_level, feature_insights)
         dosage_guidance = build_region_dosage(data.region, feature_insights)
+        fertilizer_plan = build_fertilizer_plan(
+            stress_level=stress_level,
+            care_priority=care_priority,
+            avg_z_score=avg_z_score,
+            feature_insights=feature_insights,
+            dosage_guidance=dosage_guidance,
+            region=data.region
+        )
         recommendations_extended = recommendations + [
             f"[Today] {step}" for step in time_bound_actions["today"]
         ] + [
@@ -597,6 +749,8 @@ def predict_growth(data: PlantData):
             f"[This Month] {step}" for step in time_bound_actions["this_month"]
         ] + [
             f"[Dosage] {line}" for line in dosage_guidance
+        ] + [
+            f"[Fertilizer] {fertilizer_plan['summary']}"
         ]
         top_risks = sorted(
             feature_insights.items(),
@@ -613,6 +767,7 @@ def predict_growth(data: PlantData):
             "recommendations": recommendations_extended,
             "time_bound_actions": time_bound_actions,
             "dosage_guidance": dosage_guidance,
+            "fertilizer_plan": fertilizer_plan,
             "avg_z_score": float(round(avg_z_score, 2)),
             "top_risk_factors": [
                 {

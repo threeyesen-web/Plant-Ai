@@ -7,39 +7,79 @@
     <title>Plant AI - Kerala Edition</title>
     <link rel="stylesheet" href="static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <!-- MOCK LOGIN OVERLAY -->
     <div id="loginOverlay" class="login-overlay">
-        <div class="glass-panel login-box">
-            <div class="logo">
-                <span class="icon">🌿</span>
-                <h1>Plant AI</h1>
-            </div>
-            <h2 id="loginTitle">Welcome Back</h2>
-            <p class="login-subtitle">Enter your credentials to access the system</p>
+        <div class="sproutx-shell">
+            <section class="sproutx-hero" aria-hidden="true">
+                <div class="sproutx-hero-image"></div>
+                <div class="sproutx-hero-overlay"></div>
+                <div class="sproutx-hero-content">
+                    <div class="sproutx-brand">
+                        <div class="sproutx-brand-icon">
+                            <span class="icon-plant-glyph">&#127807;</span>
+                        </div>
+                        <span class="sproutx-brand-text">Sprout<span>X</span></span>
+                    </div>
+                    <h1>Every leaf tells a story</h1>
+                    <p>With a system engineered for understanding, SproutX reveals the science behind every leaf.</p>
+                </div>
+            </section>
 
-            <form id="loginForm">
-                <div class="form-group">
-                    <label>Email</label>
-<input type="email" id="email" placeholder="Enter your email" required>
+            <section class="sproutx-auth">
+                <div class="sproutx-auth-wrap">
+                    <h2 id="loginTitle">Welcome Back</h2>
+                    <p id="loginSubtitle" class="sproutx-subtitle">Please enter your details to access your garden dashboard.</p>
+
+                    <form id="loginForm" class="sproutx-form">
+                        <div class="sproutx-field">
+                            <label for="email">Email Address</label>
+                            <div class="sproutx-input-wrap">
+                                <span class="sproutx-input-icon">&#9993;</span>
+                                <input type="email" id="email" placeholder="name@company.com" required>
+                            </div>
+                        </div>
+
+                        <div class="sproutx-field">
+                            <div class="sproutx-field-top">
+                                <label for="password">Password</label>
+                                <a href="#" class="sproutx-forgot">Forgot password?</a>
+                            </div>
+                            <div class="sproutx-input-wrap password-field">
+                                <span class="sproutx-input-icon">&#128274;</span>
+                                <input type="password" id="password" placeholder="........" required>
+                                <button type="button" id="passwordToggle" class="password-toggle" aria-label="Show password">
+                                    <svg class="eye-icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2.5 12S6 5.5 12 5.5s9.5 6.5 9.5 6.5S18 18.5 12 18.5 2.5 12 2.5 12Z" />
+                                        <circle cx="12" cy="12" r="3.25" />
+                                    </svg>
+                                    <svg class="eye-icon eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M3 3 21 21" />
+                                        <path d="M10.7 6.2a7.8 7.8 0 0 1 1.3-.1c6 0 9.5 6 9.5 6a16.8 16.8 0 0 1-3.4 3.9" />
+                                        <path d="M14.1 14.2a3.2 3.2 0 0 1-4.3-4.3" />
+                                        <path d="M6.1 9.3A17 17 0 0 0 2.5 12s3.5 6 9.5 6c1.2 0 2.3-.2 3.2-.6" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <p id="authMessage" class="sproutx-auth-message" aria-live="polite"></p>
+
+                        <button type="submit" class="login-btn">Login to Dashboard</button>
+                    </form>
+
+                    <div class="sproutx-divider"><span>Or continue with</span></div>
+
+                    <div class="google-btn-shell">
+                        <div id="googleButtonWrapper" class="google-btn-wrap"></div>
+                    </div>
+
+                    <p id="toggleText" class="sproutx-switch">Don't have an account yet? <a href="#" id="toggleAuth">Register for free</a></p>
 
                 </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="login-btn">Login to Dashboard</button>
-            </form>
-
-            <div class="auth-divider"><span>or</span></div>
-            <div id="googleButtonWrapper" class="google-btn-wrap"></div>
-            <p class="google-hint">Google sign-in is enabled when backend <code>GOOGLE_CLIENT_ID</code> is configured.</p>
-
-            <div class="login-footer">
-                <p id="toggleText">New to Plant AI? <a href="#" id="toggleAuth">Register Account</a></p>
-            </div>
+            </section>
         </div>
     </div>
 

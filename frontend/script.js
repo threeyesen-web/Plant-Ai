@@ -44,13 +44,53 @@ const loginOverlay = document.getElementById('loginOverlay');
 const mainApp = document.getElementById('mainApp');
 const loginForm = document.getElementById('loginForm');
 const loginTitle = document.getElementById('loginTitle');
+const loginSubtitle = document.getElementById('loginSubtitle');
 const toggleText = document.getElementById('toggleText');
+const authMessage = document.getElementById('authMessage');
 const googleButtonWrapper = document.getElementById('googleButtonWrapper');
+const passwordInput = document.getElementById('password');
+const passwordToggle = document.getElementById('passwordToggle');
 const API_BASE = '/api';
 
 let isRegister = false;
 
+function initHeroWordAnimation() {
+    const animatedLines = [
+        { selector: '.sproutx-hero h1', lineDelayMs: 120 },
+        { selector: '.sproutx-hero p', lineDelayMs: 420 }
+    ];
+
+    animatedLines.forEach(({ selector, lineDelayMs }) => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        const words = el.textContent.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return;
+
+        el.textContent = '';
+
+        words.forEach((word, index) => {
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'hero-word';
+            if (word.toLowerCase().includes('sproutx')) {
+                wordSpan.classList.add('brand');
+            }
+            wordSpan.style.setProperty('--word-index', String(index));
+            wordSpan.style.setProperty('--line-delay', `${lineDelayMs}ms`);
+            wordSpan.textContent = word;
+            el.appendChild(wordSpan);
+
+            if (index < words.length - 1) {
+                el.appendChild(document.createTextNode(' '));
+            }
+        });
+    });
+}
+
+initHeroWordAnimation();
+
 function enterApp(message) {
+    clearAuthMessage();
     loginOverlay.style.opacity = '0';
     setTimeout(() => {
         loginOverlay.style.display = 'none';
@@ -59,8 +99,21 @@ function enterApp(message) {
     }, 400);
 }
 
+function setAuthMessage(message, type = 'info') {
+    if (!authMessage) return;
+    authMessage.textContent = message || '';
+    authMessage.classList.remove('is-info', 'is-error');
+    if (!message) return;
+    authMessage.classList.add(type === 'error' ? 'is-error' : 'is-info');
+}
+
+function clearAuthMessage() {
+    setAuthMessage('');
+}
+
 function bindToggleAuth() {
     const toggle = document.getElementById('toggleAuth');
+    const submitBtn = loginForm?.querySelector('.login-btn');
     if (!toggle) return;
 
     toggle.addEventListener('click', (e) => {
@@ -68,18 +121,52 @@ function bindToggleAuth() {
         isRegister = !isRegister;
         if (isRegister) {
             loginTitle.textContent = 'Create Account';
-            toggleText.innerHTML = 'Already have an account? <a href="#" id="toggleAuth">Login</a>';
-            loginForm.querySelector('button').textContent = 'Register & Enter';
+            if (loginSubtitle) loginSubtitle.textContent = 'Create an account to monitor and manage your plants.';
+            toggleText.innerHTML = 'Already have an account? <a href="#" id="toggleAuth">Log in</a>';
+            if (submitBtn) submitBtn.textContent = 'Register';
         } else {
-            loginTitle.textContent = 'Welcome Back';
-            toggleText.innerHTML = 'New to Plant AI? <a href="#" id="toggleAuth">Register Account</a>';
-            loginForm.querySelector('button').textContent = 'Login to Dashboard';
+            loginTitle.textContent = 'Log In';
+            if (loginSubtitle) loginSubtitle.textContent = 'Log in to monitor and manage your plants.';
+            toggleText.innerHTML = 'New to Plant AI? <a href="#" id="toggleAuth">Create account</a>';
+            if (submitBtn) submitBtn.textContent = 'Log In';
         }
+        clearAuthMessage();
         bindToggleAuth();
     });
 }
 
 bindToggleAuth();
+
+if (passwordToggle && passwordInput) {
+    passwordToggle.addEventListener('click', () => {
+        const isHidden = passwordInput.type === 'password';
+        passwordInput.type = isHidden ? 'text' : 'password';
+        passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        passwordToggle.closest('.password-field')?.classList.toggle('is-visible', isHidden);
+    });
+}
+
+function initFloatingLabels() {
+    if (!loginForm) return;
+
+    const fields = loginForm.querySelectorAll('.sproutx-field');
+    fields.forEach((field) => {
+        const input = field.querySelector('input');
+        if (!input) return;
+
+        const syncValueState = () => {
+            field.classList.toggle('has-value', input.value.trim().length > 0);
+        };
+
+        input.addEventListener('focus', () => field.classList.add('is-focused'));
+        input.addEventListener('blur', () => field.classList.remove('is-focused'));
+        input.addEventListener('input', syncValueState);
+
+        syncValueState();
+    });
+}
+
+initFloatingLabels();
 
 async function waitForGoogleSDK(maxWaitMs = 6000) {
     const intervalMs = 100;
@@ -98,7 +185,7 @@ async function initializeGoogleSignIn() {
 
     const hasGoogleSDK = await waitForGoogleSDK();
     if (!hasGoogleSDK) {
-        googleButtonWrapper.innerHTML = '<small style="color:#ff8b8b;">Google SDK failed to load.</small>';
+        googleButtonWrapper.innerHTML = '<small style="color:#728476;">Google sign-in is currently unavailable.</small>';
         return;
     }
 
@@ -112,7 +199,7 @@ async function initializeGoogleSignIn() {
     }
 
     if (!googleClientId) {
-        googleButtonWrapper.innerHTML = '<small style="color:#ff8b8b;">Google sign-in is disabled until GOOGLE_CLIENT_ID is set in backend/.env.</small>';
+        googleButtonWrapper.innerHTML = '<small style="color:#728476;">Google sign-in is currently unavailable.</small>';
         return;
     }
 
@@ -127,12 +214,13 @@ async function initializeGoogleSignIn() {
         size: 'large',
         text: 'continue_with',
         shape: 'pill',
-        width: 320
+        width: 360
     });
 }
 
 async function handleGoogleCredential(response) {
     try {
+        clearAuthMessage();
         const apiResponse = await fetch(`${API_BASE}/google-auth`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -141,15 +229,25 @@ async function handleGoogleCredential(response) {
 
         const data = await apiResponse.json();
         if (!apiResponse.ok) {
-            alert(data.message || 'Google authentication failed');
+            setAuthMessage(data.message || 'Google authentication failed', 'error');
             return;
         }
 
         enterApp(data.message || 'Google authentication successful');
     } catch (err) {
         console.error(err);
-        alert('Server error during Google sign-in. Is backend running?');
+        setAuthMessage('Server error during Google sign-in. Is backend running?', 'error');
     }
+}
+
+function triggerGoogleSignInFromManualLogin() {
+    if (!window.google?.accounts?.id) {
+        setAuthMessage('Google sign-in is currently unavailable. Please use the Google button below.', 'error');
+        return;
+    }
+
+    window.google.accounts.id.prompt();
+    setAuthMessage('This email is registered with Google. Continue in the Google prompt to login.', 'info');
 }
 
 initializeGoogleSignIn();
@@ -157,11 +255,12 @@ initializeGoogleSignIn();
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        clearAuthMessage();
 
-        const email = document.getElementById('email').value;
+        const email = document.getElementById('email').value.trim().toLowerCase();
         const password = document.getElementById('password').value;
 
-        const btn = loginForm.querySelector('button');
+        const btn = loginForm.querySelector('.login-btn');
         btn.textContent = 'Authenticating...';
         btn.disabled = true;
 
@@ -183,8 +282,14 @@ if (loginForm) {
             const data = await response.json();
 
             if (!response.ok) {
-                alert(data.message || 'Authentication failed');
-                btn.textContent = isRegister ? 'Register & Enter' : 'Login to Dashboard';
+                if (!isRegister && data.requiresGoogleSignIn) {
+                    triggerGoogleSignInFromManualLogin();
+                    btn.textContent = 'Log In';
+                    btn.disabled = false;
+                    return;
+                }
+                setAuthMessage(data.message || 'Authentication failed', 'error');
+                btn.textContent = isRegister ? 'Register' : 'Log In';
                 btn.disabled = false;
                 return;
             }
@@ -192,7 +297,7 @@ if (loginForm) {
             enterApp(data.message);
         } catch (err) {
             console.error(err);
-            alert('Server error. Is backend running?');
+            setAuthMessage('Server error. Is backend running?', 'error');
         } finally {
             btn.disabled = false;
         }

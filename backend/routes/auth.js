@@ -6,6 +6,14 @@ const User = require("../models/User");
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+function formatUser(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email
+  };
+}
+
 router.get("/google-config", (req, res) => {
   res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || "" });
 });
@@ -18,7 +26,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Username, email, and password are required" });
     }
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "Email is already registered" });
     }
@@ -27,14 +36,14 @@ router.post("/register", async (req, res) => {
 
     const user = new User({
       username,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       authProvider: "local"
     });
 
     await user.save();
 
-    res.json({ message: "Registration successful" });
+    res.json({ message: "Registration successful", user: formatUser(user) });
   } catch (error) {
     res.status(500).json({ message: "Registration failed" });
   }
@@ -48,12 +57,16 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
     if (user.authProvider === "google") {
-      return res.status(400).json({ message: "Use Google Sign-In for this account" });
+      return res.status(409).json({
+        message: "This account uses Google Sign-In. Continue with Google to login.",
+        requiresGoogleSignIn: true
+      });
     }
     if (!user.password) {
       return res.status(400).json({ message: "Password login is not available for this account" });
@@ -64,7 +77,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    res.json({ message: "Login successful" });
+    res.json({ message: "Login successful", user: formatUser(user) });
   } catch (error) {
     res.status(500).json({ message: "Login failed" });
   }
@@ -91,17 +104,18 @@ router.post("/google-auth", async (req, res) => {
       return res.status(400).json({ message: "Invalid Google token payload" });
     }
 
-    let user = await User.findOne({ email: payload.email });
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       user = new User({
-        username: payload.name || payload.email.split("@")[0],
-        email: payload.email,
+        username: payload.name || normalizedEmail.split("@")[0],
+        email: normalizedEmail,
         authProvider: "google",
         googleId: payload.sub
       });
       await user.save();
-      return res.json({ message: "Google registration successful" });
+      return res.json({ message: "Google registration successful", user: formatUser(user) });
     }
 
     if (user.authProvider === "local") {
@@ -115,7 +129,7 @@ router.post("/google-auth", async (req, res) => {
       await user.save();
     }
 
-    return res.json({ message: "Google login successful" });
+    return res.json({ message: "Google login successful", user: formatUser(user) });
   } catch (error) {
     return res.status(401).json({ message: "Google authentication failed" });
   }
