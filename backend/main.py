@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -532,6 +532,16 @@ async def _proxy_get(path: str, params: dict | None = None):
         return JSONResponse(status_code=502, content={"message": "Auth service unavailable"})
 
 
+async def _proxy_get_raw(path: str, params: dict | None = None):
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{AUTH_API_BASE}{path}", params=params)
+        content_type = resp.headers.get("content-type", "text/plain")
+        return Response(content=resp.content, status_code=resp.status_code, media_type=content_type)
+    except Exception:
+        return JSONResponse(status_code=502, content={"message": "Auth service unavailable"})
+
+
 async def _proxy_post(path: str, request: Request):
     try:
         payload = await request.json()
@@ -569,6 +579,11 @@ async def api_register(request: Request):
 @app.post("/api/login")
 async def api_login(request: Request):
     return await _proxy_post("/api/login", request)
+
+
+@app.get("/api/verify-email")
+async def api_verify_email(request: Request):
+    return await _proxy_get_raw("/api/verify-email", params=dict(request.query_params))
 
 
 @app.get("/api/plants")

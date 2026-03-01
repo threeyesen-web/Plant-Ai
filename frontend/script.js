@@ -34,6 +34,10 @@ const recommendationList = document.getElementById('recommendationList');
 const addPlantBtn = document.getElementById('addPlantBtn');
 const addPlantStatus = document.getElementById('addPlantStatus');
 const myPlantsLink = document.getElementById('myPlantsLink');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeToggleIcon = document.getElementById('themeToggleIcon');
+const themeToggleText = document.getElementById('themeToggleText');
+const logoutBtn = document.getElementById('logoutBtn');
 const myPlantsSection = document.getElementById('myPlantsSection');
 const myPlantsList = document.getElementById('myPlantsList');
 const myPlantsEmpty = document.getElementById('myPlantsEmpty');
@@ -84,6 +88,7 @@ const passwordInput = document.getElementById('password');
 const passwordToggle = document.getElementById('passwordToggle');
 const API_BASE = '/api';
 const USER_STORAGE_KEY = 'plant_ai_user';
+const THEME_STORAGE_KEY = 'plant_ai_theme';
 
 let isRegister = false;
 let landingHeaderWasInView = false;
@@ -492,6 +497,18 @@ if (myPlantsLink) {
     });
 }
 
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        toggleTheme();
+    });
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+        logoutToLogin();
+    });
+}
+
 if (shareReportBtn) {
     shareReportBtn.addEventListener('click', async () => {
         const title = analysisPlantTitle?.textContent || 'Plant Analysis';
@@ -719,30 +736,73 @@ function setAnalyzeButtonLoading(isLoading) {
     analyzeBtn.textContent = ANALYZE_DEFAULT_LABEL;
 }
 
+function applyTheme(theme) {
+    const dark = theme === 'dark';
+    document.body.classList.toggle('theme-dark', dark);
+    if (themeToggleIcon) themeToggleIcon.textContent = dark ? 'light_mode' : 'dark_mode';
+    if (themeToggleText) themeToggleText.textContent = dark ? 'Day' : 'Night';
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    applyTheme(savedTheme === 'dark' ? 'dark' : 'light');
+}
+
+function toggleTheme() {
+    const nextTheme = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    applyTheme(nextTheme);
+}
+
+function logoutToLogin() {
+    clearStoredUser();
+    latestAnalysisContext = null;
+    if (resultModal) resultModal.style.display = 'none';
+    if (mainApp) mainApp.classList.remove('blurred');
+    toggleMyPlantsView(false);
+    if (form) form.reset();
+    if (loginForm) loginForm.reset();
+    clearAuthMessage();
+    applyAuthMode(false);
+    bindToggleAuth();
+    if (loginOverlay) {
+        loginOverlay.style.display = '';
+        loginOverlay.style.opacity = '1';
+    }
+    if (mainApp) {
+        mainApp.style.display = 'none';
+    }
+}
+
+function applyAuthMode(registerMode) {
+    isRegister = registerMode;
+    const submitBtn = loginForm?.querySelector('.login-btn');
+    if (isRegister) {
+        loginTitle.textContent = 'Create Account';
+        if (loginSubtitle) loginSubtitle.textContent = 'Create an account to monitor and manage your plants.';
+        toggleText.innerHTML = 'Already have an account? <a href="#" id="toggleAuth">Log in</a>';
+        if (submitBtn) submitBtn.textContent = 'Register';
+    } else {
+        loginTitle.textContent = 'Login';
+        if (loginSubtitle) loginSubtitle.textContent = 'Log in to monitor and manage your plants.';
+        toggleText.innerHTML = 'New to Plant AI? <a href="#" id="toggleAuth">Create account</a>';
+        if (submitBtn) submitBtn.textContent = 'Login';
+    }
+}
+
 function bindToggleAuth() {
     const toggle = document.getElementById('toggleAuth');
-    const submitBtn = loginForm?.querySelector('.login-btn');
     if (!toggle) return;
 
     toggle.addEventListener('click', (e) => {
         e.preventDefault();
-        isRegister = !isRegister;
-        if (isRegister) {
-            loginTitle.textContent = 'Create Account';
-            if (loginSubtitle) loginSubtitle.textContent = 'Create an account to monitor and manage your plants.';
-            toggleText.innerHTML = 'Already have an account? <a href="#" id="toggleAuth">Log in</a>';
-            if (submitBtn) submitBtn.textContent = 'Register';
-        } else {
-            loginTitle.textContent = 'Login';
-            if (loginSubtitle) loginSubtitle.textContent = 'Log in to monitor and manage your plants.';
-            toggleText.innerHTML = 'New to Plant AI? <a href="#" id="toggleAuth">Create account</a>';
-            if (submitBtn) submitBtn.textContent = 'Login';
-        }
+        applyAuthMode(!isRegister);
         clearAuthMessage();
         bindToggleAuth();
     });
 }
 
+initTheme();
 bindToggleAuth();
 
 if (passwordToggle && passwordInput) {
@@ -899,12 +959,24 @@ if (loginForm) {
                     btn.disabled = false;
                     return;
                 }
+                if (data.needsEmailVerification) {
+                    setAuthMessage(data.message || 'Please verify your email before login.', 'info');
+                    btn.textContent = isRegister ? 'Register' : 'Login';
+                    btn.disabled = false;
+                    return;
+                }
                 setAuthMessage(data.message || 'Authentication failed', 'error');
                 btn.textContent = isRegister ? 'Register' : 'Login';
                 btn.disabled = false;
                 return;
             }
 
+            if (isRegister && data?.requiresEmailVerification) {
+                setAuthMessage(data.message || 'Registration successful. Verify your email, then login.', 'info');
+                applyAuthMode(false);
+                bindToggleAuth();
+                return;
+            }
             if (data?.user) {
                 setStoredUser(data.user);
             }
