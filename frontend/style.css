@@ -1000,6 +1000,11 @@ button:disabled {
     font-size: 1.8rem;
 }
 
+.sproutx-brand-icon .material-symbols-outlined {
+    font-size: 30px;
+    line-height: 1;
+}
+
 .sproutx-brand-text {
     font-size: 3rem;
     font-weight: 800;
@@ -1902,6 +1907,11 @@ body.theme-dark #resultModal .shadow-md {
     background: #10b981;
     color: #fff;
     font-size: 1.3rem;
+}
+
+.modern-brand-icon .material-symbols-outlined {
+    font-size: 24px;
+    line-height: 1;
 }
 
 .modern-brand h1 {
