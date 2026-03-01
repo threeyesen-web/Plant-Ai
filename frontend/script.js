@@ -2,6 +2,7 @@ const form = document.getElementById('assessmentForm');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const resultModal = document.getElementById('resultModal');
 const closeBtn = document.querySelector('.close-btn');
+const modernMain = document.querySelector('.modern-main');
 
 // Close Modal Logic
 if (closeBtn) {
@@ -19,13 +20,42 @@ window.onclick = (event) => {
 };
 
 const suitabilityValue = document.getElementById('suitabilityValue');
+const suitabilityMatchValue = document.getElementById('suitabilityMatchValue');
+const suitabilityFill = document.getElementById('suitabilityFill');
 const stressValue = document.getElementById('stressValue');
 const careValue = document.getElementById('careValue');
+const riskValue = document.getElementById('riskValue');
+const analysisPlantTitle = document.getElementById('analysisPlantTitle');
+const recalculateBtn = document.getElementById('recalculateBtn');
+const shareReportBtn = document.getElementById('shareReportBtn');
 const statusMessage = document.getElementById('statusMessage');
 const smartAdvisory = document.getElementById('smartAdvisory');
 const recommendationList = document.getElementById('recommendationList');
+const addPlantBtn = document.getElementById('addPlantBtn');
+const addPlantStatus = document.getElementById('addPlantStatus');
+const myPlantsLink = document.getElementById('myPlantsLink');
+const myPlantsSection = document.getElementById('myPlantsSection');
+const myPlantsList = document.getElementById('myPlantsList');
+const myPlantsEmpty = document.getElementById('myPlantsEmpty');
+const myPlantsActiveName = document.getElementById('myPlantsActiveName');
+const myPlantsActiveMeta = document.getElementById('myPlantsActiveMeta');
+const myPlantsHealthBadge = document.getElementById('myPlantsHealthBadge');
+const myPlantsSuitability = document.getElementById('myPlantsSuitability');
+const myPlantsStress = document.getElementById('myPlantsStress');
+const myPlantsRisk = document.getElementById('myPlantsRisk');
+const myPlantsPriority = document.getElementById('myPlantsPriority');
+const myPlantsInsight = document.getElementById('myPlantsInsight');
+const myPlantsHistoryBody = document.getElementById('myPlantsHistoryBody');
+const fertilizerRecommendation = document.getElementById('fertilizerRecommendation');
+const fertilizerName = document.getElementById('fertilizerName');
+const fertilizerApplication = document.getElementById('fertilizerApplication');
+const fertilizerReason = document.getElementById('fertilizerReason');
+const fertilizerBuyLink = document.getElementById('fertilizerBuyLink');
 const ANALYZE_DEFAULT_LABEL = 'Diagonose';
 const ANALYZE_LOADING_LABEL = 'Diagonosing...';
+let latestAnalysisContext = null;
+let myPlantsCache = [];
+let activeMyPlantId = '';
 
 // === SMART PRESETS & MAPPING ===
 const SOIL_PRESETS = {
@@ -53,9 +83,513 @@ const googleButtonWrapper = document.getElementById('googleButtonWrapper');
 const passwordInput = document.getElementById('password');
 const passwordToggle = document.getElementById('passwordToggle');
 const API_BASE = '/api';
+const USER_STORAGE_KEY = 'plant_ai_user';
 
 let isRegister = false;
 let landingHeaderWasInView = false;
+
+function formatPlantTitle(plantName) {
+    if (!plantName) return 'Monstera Deliciosa';
+    return String(plantName)
+        .trim()
+        .split(/\s+/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+}
+
+function getStoredUser() {
+    try {
+        const raw = localStorage.getItem(USER_STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (_) {
+        return null;
+    }
+}
+
+function setStoredUser(user) {
+    if (!user || !user.id) return;
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    myPlantsCache = [];
+    activeMyPlantId = '';
+}
+
+function getStoredUserId() {
+    return getStoredUser()?.id || '';
+}
+
+function clearStoredUser() {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    myPlantsCache = [];
+    activeMyPlantId = '';
+}
+
+function setAddPlantStatus(message, type = 'info') {
+    if (!addPlantStatus) return;
+    addPlantStatus.textContent = message || '';
+    if (type === 'success') {
+        addPlantStatus.className = 'mt-3 min-h-6 text-sm font-semibold text-emerald-700';
+        return;
+    }
+    if (type === 'error') {
+        addPlantStatus.className = 'mt-3 min-h-6 text-sm font-semibold text-rose-700';
+        return;
+    }
+    addPlantStatus.className = 'mt-3 min-h-6 text-sm font-semibold text-slate-600';
+}
+
+function toggleMyPlantsView(showMyPlants) {
+    if (!form || !myPlantsSection) return;
+    if (modernMain) {
+        modernMain.classList.remove('is-screen-flipping');
+        void modernMain.offsetWidth;
+        modernMain.classList.add('is-screen-flipping');
+    }
+    form.classList.toggle('hidden', showMyPlants);
+    myPlantsSection.classList.toggle('hidden', !showMyPlants);
+    if (myPlantsLink) {
+        myPlantsLink.textContent = showMyPlants ? 'Analyze' : 'Garden';
+        myPlantsLink.classList.toggle('is-analyze', showMyPlants);
+        myPlantsLink.classList.toggle('is-my-plants', !showMyPlants);
+        myPlantsLink.classList.remove('is-switching');
+        void myPlantsLink.offsetWidth;
+        myPlantsLink.classList.add('is-switching');
+    }
+}
+
+function formatShortDate(value) {
+    if (!value) return '--';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '--';
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getHealthStatusMeta(suitabilityScore) {
+    const score = Number(suitabilityScore) || 0;
+    if (score >= 85) return { label: 'Optimal Health', tone: 'text-emerald-700 bg-emerald-100', dot: 'bg-emerald-500' };
+    if (score >= 65) return { label: 'Improving', tone: 'text-amber-700 bg-amber-100', dot: 'bg-amber-500' };
+    return { label: 'Needs Attention', tone: 'text-rose-700 bg-rose-100', dot: 'bg-rose-500' };
+}
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeFertilizerPlan(rawPlan) {
+    const plan = rawPlan || {};
+    const firstLink = Array.isArray(plan.buy_links) && plan.buy_links.length ? plan.buy_links[0]?.url : '';
+    return {
+        recommendation: plan.recommendation || '-',
+        fertilizerType: plan.fertilizer_type || plan.fertilizerType || '-',
+        fertilizerName: plan.fertilizer_name || plan.fertilizerName || '-',
+        searchTerm: plan.search_term || plan.searchTerm || plan.fertilizer_name || plan.fertilizerName || '',
+        summary: plan.summary || '-',
+        applicationPlan: plan.application_plan || plan.applicationPlan || '-',
+        reason: plan.reason || '-',
+        buyLink: plan.buyLink || firstLink || ''
+    };
+}
+
+function buildIndiaMartLink(searchTerm) {
+    const term = String(searchTerm || '').trim();
+    if (!term || term === '-' || term.toLowerCase() === 'unknown') {
+        return 'https://dir.indiamart.com/search.mp?ss=fertilizer+for+plants';
+    }
+    const normalized = term.replace(/\s+/g, ' ');
+    if (!normalized || normalized === '-') {
+        return 'https://dir.indiamart.com/search.mp?ss=fertilizer+for+plants';
+    }
+    return `https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(normalized)}`;
+}
+
+function renderFertilizerPlan(rawPlan) {
+    const plan = normalizeFertilizerPlan(rawPlan);
+    if (fertilizerRecommendation) fertilizerRecommendation.textContent = plan.recommendation;
+    if (fertilizerName) fertilizerName.textContent = plan.fertilizerName;
+    if (fertilizerApplication) fertilizerApplication.textContent = plan.applicationPlan;
+    if (fertilizerReason) fertilizerReason.textContent = `Why: ${plan.reason}`;
+    if (fertilizerBuyLink) {
+        const queryTerm = plan.searchTerm || (plan.fertilizerName !== '-' ? plan.fertilizerName : '');
+        fertilizerBuyLink.href = plan.buyLink || buildIndiaMartLink(queryTerm);
+    }
+}
+
+function resetMyPlantsDetail(message = 'Select a plant to view insight.') {
+    if (myPlantsActiveName) myPlantsActiveName.textContent = 'Select a plant';
+    if (myPlantsActiveMeta) myPlantsActiveMeta.textContent = 'No plant selected';
+    if (myPlantsHealthBadge) {
+        myPlantsHealthBadge.className = 'inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700';
+        myPlantsHealthBadge.innerHTML = '<span class="material-symbols-outlined text-base leading-none">monitor_heart</span>Waiting for selection';
+    }
+    if (myPlantsSuitability) myPlantsSuitability.textContent = '--';
+    if (myPlantsStress) myPlantsStress.textContent = '--';
+    if (myPlantsRisk) myPlantsRisk.textContent = '--';
+    if (myPlantsPriority) myPlantsPriority.textContent = '--';
+    if (myPlantsInsight) myPlantsInsight.textContent = message;
+    if (myPlantsHistoryBody) {
+        myPlantsHistoryBody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-sm font-medium text-slate-500">No monitoring history available.</td></tr>';
+    }
+}
+
+async function loadMyPlantMonitoring(plantId) {
+    const userId = getStoredUserId();
+    if (!userId || !plantId) return [];
+    const response = await fetch(`${API_BASE}/plants/${encodeURIComponent(plantId)}/monitoring?userId=${encodeURIComponent(userId)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data?.message || 'Failed to fetch monitoring history');
+    }
+    return Array.isArray(data.records) ? data.records : [];
+}
+
+function renderMyPlantsList() {
+    if (!myPlantsList || !myPlantsEmpty) return;
+    myPlantsList.innerHTML = '';
+
+    if (!myPlantsCache.length) {
+        myPlantsEmpty.classList.remove('hidden');
+        myPlantsEmpty.textContent = 'No plants added yet. Run analysis and use Add Plant to build your garden.';
+        return;
+    }
+
+    myPlantsEmpty.classList.add('hidden');
+
+    myPlantsCache.forEach((plant) => {
+        const isActive = plant.id === activeMyPlantId;
+        const latest = plant.latestMonitoring || {};
+        const suitability = Number(latest.suitabilityScore) || 0;
+        const health = getHealthStatusMeta(suitability);
+        const container = document.createElement('div');
+        container.className = `group relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all ${
+            isActive
+                ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white shadow-emerald-100/80'
+                : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md'
+        }`;
+
+        const accent = document.createElement('div');
+        accent.className = `pointer-events-none absolute inset-y-0 left-0 w-1.5 ${isActive ? 'bg-emerald-500' : 'bg-slate-200 group-hover:bg-emerald-300'}`;
+        container.appendChild(accent);
+
+        const top = document.createElement('div');
+        top.className = 'ml-1 flex items-start justify-between gap-3';
+
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'flex min-w-0 flex-1 items-start gap-3 text-left';
+        selectBtn.dataset.plantId = plant.id;
+        selectBtn.innerHTML = `
+            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 text-emerald-700 shadow-sm">
+                <span class="material-symbols-outlined text-lg leading-none">potted_plant</span>
+            </span>
+            <span class="min-w-0">
+                <span class="block truncate text-base font-extrabold tracking-tight text-slate-900">${escapeHtml(plant.plantName || 'Unnamed Plant')}</span>
+                <span class="mt-1 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(plant.city || 'Unknown city')} | ${escapeHtml(String(plant.plantLocation || 'outdoor').replace(/^./, (s) => s.toUpperCase()))}</span>
+                <span class="mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${health.tone}">
+                    <span class="h-2 w-2 rounded-full ${health.dot}"></span>${health.label}
+                </span>
+                <span class="mt-2 block text-xs font-semibold text-slate-600">Suitability: ${Math.round(suitability)}%</span>
+            </span>
+        `;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600';
+        deleteBtn.dataset.deletePlantId = plant.id;
+        deleteBtn.innerHTML = '<span class="material-symbols-outlined text-lg leading-none">delete</span>';
+
+        top.appendChild(selectBtn);
+        top.appendChild(deleteBtn);
+        container.appendChild(top);
+        myPlantsList.appendChild(container);
+    });
+
+    myPlantsList.querySelectorAll('[data-plant-id]').forEach((button) => {
+        button.addEventListener('click', () => selectMyPlant(button.dataset.plantId || ''));
+    });
+
+    myPlantsList.querySelectorAll('[data-delete-plant-id]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const plantId = button.dataset.deletePlantId || '';
+            if (!plantId) return;
+            if (!confirm('Remove this plant from Garden?')) return;
+            await deleteMyPlant(plantId);
+        });
+    });
+}
+
+function renderMyPlantHistory(records) {
+    if (!myPlantsHistoryBody) return;
+    if (!records.length) {
+        myPlantsHistoryBody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-sm font-medium text-slate-500">No monitoring history available.</td></tr>';
+        return;
+    }
+
+    myPlantsHistoryBody.innerHTML = '';
+    records.slice(0, 8).forEach((entry) => {
+        const suitability = Number(entry.suitabilityScore) || 0;
+        const status = getHealthStatusMeta(suitability);
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-slate-50';
+        row.innerHTML = `
+            <td class="px-4 py-3 font-semibold text-slate-700">${formatShortDate(entry.dateChecked)}</td>
+            <td class="px-4 py-3 text-slate-700">${Math.round(suitability)}%</td>
+            <td class="px-4 py-3 text-slate-700">${entry.stressLevel || '--'}</td>
+            <td class="px-4 py-3 text-slate-700">${entry.carePriority || '--'}</td>
+            <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${status.tone}">
+                    <span class="h-2 w-2 rounded-full ${status.dot}"></span>${status.label}
+                </span>
+            </td>
+        `;
+        myPlantsHistoryBody.appendChild(row);
+    });
+}
+
+function updateMyPlantsDetail(plant, records) {
+    const latest = plant?.latestMonitoring || records[0] || {};
+    const suitability = Math.round(Number(latest.suitabilityScore) || 0);
+    const health = getHealthStatusMeta(suitability);
+
+    if (myPlantsActiveName) myPlantsActiveName.textContent = plant?.plantName || 'Selected Plant';
+    if (myPlantsActiveMeta) {
+        myPlantsActiveMeta.textContent = `${plant?.region || 'Unknown region'} | ${plant?.city || 'Unknown city'} | ${String(plant?.plantLocation || 'outdoor').replace(/^./, (s) => s.toUpperCase())}`;
+    }
+    if (myPlantsHealthBadge) {
+        myPlantsHealthBadge.className = `inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${health.tone}`;
+        myPlantsHealthBadge.innerHTML = `<span class="material-symbols-outlined text-base leading-none">monitor_heart</span>${health.label}`;
+    }
+
+    if (myPlantsSuitability) myPlantsSuitability.textContent = `${suitability}%`;
+    if (myPlantsStress) myPlantsStress.textContent = latest.stressLevel || '--';
+    if (myPlantsRisk) myPlantsRisk.textContent = `${Math.round(Number(latest.riskScore) || 0)}%`;
+    if (myPlantsPriority) myPlantsPriority.textContent = latest.carePriority || '--';
+
+    const oldest = records[records.length - 1];
+    const newest = records[0];
+    if (myPlantsInsight) {
+        if (oldest && newest) {
+            const delta = Math.round((Number(newest.suitabilityScore) || 0) - (Number(oldest.suitabilityScore) || 0));
+            const trendText = delta > 0 ? `improved by ${delta}%` : delta < 0 ? `dropped by ${Math.abs(delta)}%` : 'stayed stable';
+            const advice = newest.advisoryText || 'Maintain consistency in watering and nutrient schedule.';
+            myPlantsInsight.textContent = `Suitability has ${trendText} across recent checks. ${advice}`;
+        } else if (newest?.advisoryText) {
+            myPlantsInsight.textContent = newest.advisoryText;
+        } else {
+            myPlantsInsight.textContent = 'Add more monitoring records to unlock trend-based guidance.';
+        }
+    }
+
+    renderMyPlantHistory(records);
+}
+
+async function selectMyPlant(plantId) {
+    if (!plantId) return;
+    activeMyPlantId = plantId;
+    renderMyPlantsList();
+
+    const target = myPlantsCache.find((plant) => String(plant.id) === String(plantId));
+    if (!target) {
+        resetMyPlantsDetail();
+        return;
+    }
+
+    try {
+        const records = await loadMyPlantMonitoring(plantId);
+        updateMyPlantsDetail(target, records);
+    } catch (error) {
+        console.error(error);
+        updateMyPlantsDetail(target, []);
+    }
+}
+
+async function deleteMyPlant(plantId) {
+    const userId = getStoredUserId();
+    if (!userId || !plantId) return;
+    const response = await fetch(`${API_BASE}/plants/${encodeURIComponent(plantId)}?userId=${encodeURIComponent(userId)}`, {
+        method: 'DELETE'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        alert(data?.message || 'Unable to delete plant.');
+        return;
+    }
+    await loadMyPlants();
+}
+
+async function loadMyPlants(preferredPlantId = '') {
+    if (!myPlantsList || !myPlantsEmpty) return;
+    const userId = getStoredUserId();
+    if (!userId) {
+        myPlantsCache = [];
+        activeMyPlantId = '';
+        renderMyPlantsList();
+        myPlantsEmpty.classList.remove('hidden');
+        myPlantsEmpty.textContent = 'Please login to view your saved plants.';
+        resetMyPlantsDetail('Login to access your plant tracking dashboard.');
+        return;
+    }
+
+    myPlantsList.innerHTML = '<div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-600">Loading plants...</div>';
+    try {
+        const response = await fetch(`${API_BASE}/plants?userId=${encodeURIComponent(userId)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data?.message || 'Failed to load plants');
+        }
+
+        myPlantsCache = Array.isArray(data.plants) ? data.plants : [];
+        if (!myPlantsCache.length) {
+            activeMyPlantId = '';
+            renderMyPlantsList();
+            resetMyPlantsDetail('No plant history yet. Add your first plant from analysis results.');
+            return;
+        }
+
+        const resolvedId = preferredPlantId && myPlantsCache.some((p) => String(p.id) === String(preferredPlantId))
+            ? preferredPlantId
+            : (activeMyPlantId && myPlantsCache.some((p) => String(p.id) === String(activeMyPlantId))
+                ? activeMyPlantId
+                : String(myPlantsCache[0].id));
+
+        await selectMyPlant(String(resolvedId));
+    } catch (error) {
+        console.error(error);
+        myPlantsCache = [];
+        activeMyPlantId = '';
+        renderMyPlantsList();
+        myPlantsEmpty.classList.remove('hidden');
+        myPlantsEmpty.textContent = 'Failed to load Garden right now.';
+        resetMyPlantsDetail('Unable to fetch tracking records at the moment.');
+    }
+}
+
+if (recalculateBtn) {
+    recalculateBtn.addEventListener('click', () => {
+        resultModal.style.display = 'none';
+        mainApp.classList.remove('blurred');
+    });
+}
+
+if (myPlantsLink) {
+    myPlantsLink.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (!getStoredUserId()) {
+            alert('Please login to access your Garden data.');
+            return;
+        }
+        const openingMyPlants = myPlantsSection?.classList.contains('hidden');
+        if (openingMyPlants) {
+            toggleMyPlantsView(true);
+            await loadMyPlants();
+            return;
+        }
+        toggleMyPlantsView(false);
+    });
+}
+
+if (shareReportBtn) {
+    shareReportBtn.addEventListener('click', async () => {
+        const title = analysisPlantTitle?.textContent || 'Plant Analysis';
+        const summary = `Suitability: ${suitabilityValue.textContent}% | Stress: ${stressValue.textContent} | Care: ${careValue.textContent}`;
+
+        try {
+            if (navigator.share) {
+                await navigator.share({ title, text: summary });
+                return;
+            }
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(`${title}\n${summary}`);
+                alert('Report summary copied to clipboard.');
+            }
+        } catch (_) {
+            // Ignore cancelled share/copy flow.
+        }
+    });
+}
+
+if (addPlantBtn) {
+    addPlantBtn.addEventListener('click', async () => {
+        if (!latestAnalysisContext) {
+            setAddPlantStatus('Run an analysis first, then add the plant to Garden.', 'error');
+            return;
+        }
+
+        const userId = getStoredUserId();
+        if (!userId) {
+            setAddPlantStatus('Login required to add plants to Garden.', 'error');
+            return;
+        }
+
+        const { result, payload, formState, weatherMeta } = latestAnalysisContext;
+        const riskScore = Math.max(0, Math.min(100, Math.round(100 - (Number(result?.suitability_percentage) || 0))));
+
+        const requestBody = {
+            userId,
+            plantName: formatPlantTitle(formState.plantType),
+            region: formState.region,
+            city: formState.city || 'Unknown',
+            soilType: formState.soilType,
+            waterAvailability: formState.watering,
+            plantLocation: formState.location,
+            initialAnalysis: {
+                dateChecked: new Date().toISOString(),
+                suitabilityScore: Number(result?.suitability_percentage) || 0,
+                stressLevel: result?.stress_level || 'Unknown',
+                carePriority: result?.care_priority || 'Unknown',
+                riskScore,
+                advisoryText: result?.smart_advisory || 'No additional advisory available.',
+                fertilizerPlan: normalizeFertilizerPlan(result?.fertilizer_plan),
+                nutrientValues: {
+                    nitrogen: payload.nitrogen,
+                    phosphorus: payload.phosphorus,
+                    potassium: payload.potassium
+                },
+                inputParameters: {
+                    temperature: payload.temperature,
+                    humidity: payload.humidity,
+                    rainfall: payload.rainfall,
+                    ph: payload.ph,
+                    weatherSource: weatherMeta.source || 'regional defaults'
+                }
+            }
+        };
+
+        const originalLabel = addPlantBtn.textContent;
+        addPlantBtn.disabled = true;
+        addPlantBtn.textContent = 'Adding...';
+        setAddPlantStatus('Saving plant to Garden...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE}/plants`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                setAddPlantStatus(data?.message || 'Unable to add plant right now.', 'error');
+                return;
+            }
+
+            setAddPlantStatus(`${formatPlantTitle(formState.plantType)} added to Garden successfully.`, 'success');
+            if (myPlantsSection && !myPlantsSection.classList.contains('hidden')) {
+                await loadMyPlants(data?.plant?.id ? String(data.plant.id) : '');
+            }
+        } catch (error) {
+            console.error(error);
+            setAddPlantStatus('Network error while adding plant.', 'error');
+        } finally {
+            addPlantBtn.disabled = false;
+            addPlantBtn.textContent = originalLabel || 'Add Plant';
+        }
+    });
+}
 
 function initHeroWordAnimation(animatedLines) {
 
@@ -140,6 +674,11 @@ function enterApp(message) {
                 node.style.filter = 'none';
             });
         }, 2200);
+        if (!getStoredUserId()) {
+            clearStoredUser();
+        } else {
+            loadMyPlants().catch((error) => console.error('Garden preload failed:', error));
+        }
         alert(message);
     }, 400);
 }
@@ -302,6 +841,9 @@ async function handleGoogleCredential(response) {
             return;
         }
 
+        if (data?.user) {
+            setStoredUser(data.user);
+        }
         enterApp(data.message || 'Google authentication successful');
     } catch (err) {
         console.error(err);
@@ -351,9 +893,9 @@ if (loginForm) {
             const data = await response.json();
 
             if (!response.ok) {
-                if (!isRegister && data.requiresGoogleSignIn) {
+                if (data.requiresGoogleSignIn) {
                     triggerGoogleSignInFromManualLogin();
-                    btn.textContent = 'Login';
+                    btn.textContent = isRegister ? 'Register' : 'Login';
                     btn.disabled = false;
                     return;
                 }
@@ -363,6 +905,9 @@ if (loginForm) {
                 return;
             }
 
+            if (data?.user) {
+                setStoredUser(data.user);
+            }
             enterApp(data.message);
         } catch (err) {
             console.error(err);
@@ -382,6 +927,7 @@ form.addEventListener('submit', async (e) => {
     const watering = document.querySelector('input[name="watering"]:checked').value;
     const city = document.getElementById('city').value;
     const plantType = document.getElementById('plant_type').value.trim();
+    const plantLocation = document.querySelector('input[name="location"]:checked')?.value || 'outdoor';
 
     const soilData = SOIL_PRESETS[soilType];
     const rainData = WATER_PRESETS[watering];
@@ -430,11 +976,18 @@ form.addEventListener('submit', async (e) => {
 
         resultModal.style.display = 'flex';
         mainApp.classList.add('blurred');
+        analysisPlantTitle.textContent = formatPlantTitle(plantType);
 
         if (!response.ok) {
+            latestAnalysisContext = null;
+            setAddPlantStatus('Plant could not be identified. Update inputs and try again.', 'error');
+            renderFertilizerPlan(null);
             suitabilityValue.textContent = 'N/A';
+            suitabilityMatchValue.textContent = '0';
+            suitabilityFill.style.width = '0%';
             stressValue.textContent = 'NOT IDENTIFIED';
             careValue.textContent = '-';
+            riskValue.textContent = '-';
             statusMessage.textContent = result?.detail || 'plant is not identified';
             renderRecommendations({
                 smart_advisory: 'Verify plant name and retry with a supported crop or known indoor plant.',
@@ -447,9 +1000,13 @@ form.addEventListener('submit', async (e) => {
             return;
         }
 
-        suitabilityValue.textContent = result.suitability_percentage;
+        const suitability = Number(result.suitability_percentage) || 0;
+        suitabilityValue.textContent = suitability;
+        suitabilityMatchValue.textContent = suitability;
+        suitabilityFill.style.width = `${Math.max(0, Math.min(100, suitability))}%`;
         stressValue.textContent = result.stress_level;
         careValue.textContent = result.care_priority;
+        riskValue.textContent = String(Math.max(0, Math.min(100, Math.round(100 - suitability))));
 
         if (result.stress_level === 'High' || result.stress_level === 'MISMATCH') {
             document.documentElement.style.setProperty('--accent', '#ff4757');
@@ -468,8 +1025,25 @@ form.addEventListener('submit', async (e) => {
         }
 
         renderRecommendations(result);
+        renderFertilizerPlan(result?.fertilizer_plan);
+        latestAnalysisContext = {
+            result,
+            payload,
+            weatherMeta: { source: wxSource, temperature: temp, humidity: humid },
+            formState: {
+                region,
+                soilType,
+                watering,
+                city,
+                plantType,
+                location: plantLocation
+            }
+        };
+        setAddPlantStatus('Analysis ready. You can now add this plant to Garden.', 'info');
     } catch (error) {
         console.error(error);
+        latestAnalysisContext = null;
+        setAddPlantStatus('Analysis failed. Please retry before adding plant.', 'error');
         alert('Analysis Failed');
     } finally {
         setAnalyzeButtonLoading(false);
@@ -477,7 +1051,7 @@ form.addEventListener('submit', async (e) => {
 });
 
 function renderRecommendations(result) {
-    smartAdvisory.textContent = result.smart_advisory || 'No additional advisory available.';
+    smartAdvisory.textContent = buildAssessmentSummary(result);
     recommendationList.innerHTML = '';
     const items = Array.isArray(result.recommendations) ? result.recommendations : [];
     const general = items.filter((x) => !x.startsWith('['));
@@ -502,8 +1076,105 @@ function renderRecommendations(result) {
     }
 
     finalItems.forEach((item) => {
+        const { tag, text } = parseRecommendationItem(item);
         const li = document.createElement('li');
-        li.textContent = item;
+        li.className = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
+
+        const topRow = document.createElement('div');
+        topRow.className = 'mb-2 flex items-center gap-2';
+
+        const dot = document.createElement('span');
+        dot.className = `inline-block h-2.5 w-2.5 rounded-full ${getRecommendationDotClass(tag)}`;
+        dot.setAttribute('aria-hidden', 'true');
+        topRow.appendChild(dot);
+
+        const badge = document.createElement('span');
+        badge.className = `inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${getRecommendationBadgeClass(tag)}`;
+        badge.textContent = tag || 'Action';
+        topRow.appendChild(badge);
+
+        const body = document.createElement('p');
+        body.className = 'text-sm font-medium leading-6 text-slate-700';
+        body.textContent = text;
+
+        li.appendChild(topRow);
+        li.appendChild(body);
         recommendationList.appendChild(li);
     });
 }
+
+function buildAssessmentSummary(result) {
+    const lines = [];
+    const advisory = result?.smart_advisory || 'No additional advisory available.';
+    lines.push(advisory);
+
+    const meta = [];
+    if (result?.stress_level) meta.push(`Stress: ${result.stress_level}`);
+    if (result?.care_priority) meta.push(`Care Priority: ${result.care_priority}`);
+    if (typeof result?.suitability_percentage === 'number') {
+        meta.push(`Suitability Match: ${Math.max(0, Math.min(100, Math.round(result.suitability_percentage)))}%`);
+    }
+    if (meta.length) {
+        lines.push(`Current Snapshot: ${meta.join(' | ')}`);
+    }
+
+    if (Array.isArray(result?.top_risk_factors) && result.top_risk_factors.length) {
+        const topRisks = result.top_risk_factors.slice(0, 2).map((risk) => {
+            const feature = risk.feature || 'Factor';
+            const direction = risk.direction || 'off-target';
+            const current = typeof risk.current === 'number' ? risk.current : null;
+            const target = typeof risk.target === 'number' ? risk.target : null;
+            if (current !== null && target !== null) {
+                return `${feature} is ${direction} (${current} vs ${target} target)`;
+            }
+            return `${feature} is ${direction}`;
+        });
+        if (topRisks.length) {
+            lines.push(`Key Risk Factors: ${topRisks.join('; ')}.`);
+        }
+    }
+
+    const todayAction = result?.time_bound_actions?.today?.[0];
+    if (todayAction) {
+        lines.push(`Immediate Step: ${todayAction}`);
+    }
+
+    const fertilizerSummary = result?.fertilizer_plan?.summary;
+    if (fertilizerSummary) {
+        lines.push(`Nutrition Note: ${fertilizerSummary}`);
+    }
+
+    return lines.join('\n\n');
+}
+
+function parseRecommendationItem(item) {
+    const value = typeof item === 'string' ? item.trim() : '';
+    const match = value.match(/^\[(.+?)\]\s*(.*)$/);
+    if (!match) {
+        return { tag: 'General', text: value || 'Maintain routine care and regular checks.' };
+    }
+    const rawTag = (match[1] || 'General').trim();
+    const text = (match[2] || '').trim() || 'Maintain routine care and regular checks.';
+    return { tag: rawTag, text };
+}
+
+function getRecommendationBadgeClass(tag) {
+    const key = (tag || '').toLowerCase();
+    if (key === 'today') return 'border-rose-200 bg-rose-50 text-rose-700';
+    if (key === 'this week') return 'border-amber-200 bg-amber-50 text-amber-700';
+    if (key === 'this month') return 'border-sky-200 bg-sky-50 text-sky-700';
+    if (key === 'dosage') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (key === 'fertilizer') return 'border-violet-200 bg-violet-50 text-violet-700';
+    return 'border-slate-200 bg-slate-50 text-slate-700';
+}
+
+function getRecommendationDotClass(tag) {
+    const key = (tag || '').toLowerCase();
+    if (key === 'today') return 'bg-rose-500';
+    if (key === 'this week') return 'bg-amber-500';
+    if (key === 'this month') return 'bg-sky-500';
+    if (key === 'dosage') return 'bg-emerald-500';
+    if (key === 'fertilizer') return 'bg-violet-500';
+    return 'bg-slate-500';
+}
+

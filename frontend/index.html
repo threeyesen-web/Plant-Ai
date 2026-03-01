@@ -7,6 +7,9 @@
     <title>Plant AI - Kerala Edition</title>
     <link rel="stylesheet" href="static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body>
@@ -92,6 +95,9 @@
                         <p>Analyze. Optimize. Flourish.</p>
                     </div>
                 </div>
+                <nav class="modern-header-nav" aria-label="Primary">
+                    <a href="#" id="myPlantsLink" class="modern-header-link is-my-plants">Garden</a>
+                </nav>
             </header>
 
             <form id="assessmentForm" class="modern-form">
@@ -285,47 +291,241 @@
                     <p>Analysis usually takes 5-10 seconds.</p>
                 </div>
             </form>
+
+            <section id="myPlantsSection" class="mt-8 hidden">
+                <section class="mb-6 overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white p-6 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300 bg-white text-emerald-600 shadow-sm animate-pulse">forest</span>
+                        <div>
+                            <h2 class="font-['Space_Grotesk'] text-3xl font-bold tracking-tight text-slate-900">Garden</h2>
+                            <p class="mt-1 text-sm font-medium text-slate-600">Your saved plant portfolio with live health snapshots and progress history.</p>
+                        </div>
+                    </div>
+                </section>
+                <div class="grid gap-6 xl:grid-cols-3">
+                    <aside class="space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm xl:col-span-1">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 class="font-['Space_Grotesk'] text-xl font-bold tracking-tight text-slate-900">Plant Library</h3>
+                            <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">Tracked</span>
+                        </div>
+                        <p class="text-sm font-medium leading-6 text-slate-600">Track every saved plant and monitor progress trends over time.</p>
+
+                        <div id="myPlantsList" class="space-y-3"></div>
+                        <p id="myPlantsEmpty" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-600"></p>
+                    </aside>
+
+                    <div class="space-y-6 xl:col-span-2">
+                        <section class="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 id="myPlantsActiveName" class="font-['Space_Grotesk'] text-2xl font-bold tracking-tight text-slate-900">Select a plant</h3>
+                                    <p id="myPlantsActiveMeta" class="mt-1 text-sm font-medium text-slate-500">No plant selected</p>
+                                </div>
+                                <span id="myPlantsHealthBadge"
+                                    class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
+                                    <span class="material-symbols-outlined text-base leading-none">monitor_heart</span>
+                                    Waiting for selection
+                                </span>
+                            </div>
+
+                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Suitability</p>
+                                    <p id="myPlantsSuitability" class="mt-2 text-2xl font-extrabold text-emerald-600">--</p>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Stress</p>
+                                    <p id="myPlantsStress" class="mt-2 text-2xl font-extrabold text-slate-900">--</p>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Risk Score</p>
+                                    <p id="myPlantsRisk" class="mt-2 text-2xl font-extrabold text-slate-900">--</p>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Care Priority</p>
+                                    <p id="myPlantsPriority" class="mt-2 text-2xl font-extrabold text-slate-900">--</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                            <h4 class="font-['Space_Grotesk'] text-xl font-bold tracking-tight text-slate-900">Progress Tracking</h4>
+                            <p class="mt-1 text-sm font-medium text-slate-500">See how conditions changed across recent check-ins.</p>
+
+                            <div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined mt-0.5 text-emerald-600">lightbulb</span>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-900">Expert Insight</p>
+                                        <p id="myPlantsInsight" class="mt-1 text-sm font-medium leading-6 text-slate-700">Select a plant to view insight.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                                <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+                                    <span class="text-sm font-bold text-slate-800">Progress History</span>
+                                    <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent Records</span>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-left text-sm">
+                                        <thead class="bg-white text-slate-500">
+                                            <tr>
+                                                <th class="px-4 py-3 font-semibold">Date</th>
+                                                <th class="px-4 py-3 font-semibold">Suitability</th>
+                                                <th class="px-4 py-3 font-semibold">Stress</th>
+                                                <th class="px-4 py-3 font-semibold">Care Priority</th>
+                                                <th class="px-4 py-3 font-semibold text-right">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="myPlantsHistoryBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </section>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
     <!-- Result Modal -->
     <div id="resultModal" class="modal">
-        <div class="modal-content glass-panel">
+        <div class="modal-content result-modal-card">
             <span class="close-btn">&times;</span>
-            <div id="resultsContent">
-                <div class="score-ring">
-                    <svg class="progress-ring" width="120" height="120">
-                        <circle class="progress-ring__circle" stroke="var(--accent)" stroke-width="8" fill="transparent"
-                            r="52" cx="60" cy="60" />
-                    </svg>
-                    <div class="score-text">
-                        <span id="suitabilityValue">0</span>%
-                        <small>Suitability</small>
+            <div id="resultsContent" class="analysis-layout rounded-[30px] border border-slate-200/80 bg-white p-4 text-slate-900 sm:p-6 lg:p-8">
+                <section class="analysis-head flex flex-col gap-6 border-b border-slate-200 pb-8 md:flex-row md:items-start md:justify-between">
+                    <div class="analysis-title-wrap">
+                        <p class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
+                            <span class="material-symbols-outlined text-[18px] leading-none">radio_button_unchecked</span>
+                            LIVE ASSESSMENT
+                        </p>
+                        <h2 id="analysisPlantTitle" class="mt-3 max-w-2xl font-['Space_Grotesk'] text-4xl font-extrabold leading-[0.98] tracking-[-0.03em] text-slate-900 sm:text-5xl">Monstera Deliciosa</h2>
+                        <p class="analysis-sub mt-4 max-w-xl text-base font-normal leading-relaxed text-slate-500 sm:text-lg">Comprehensive health diagnostic and environmental suitability report.</p>
                     </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <label>Stress Level</label>
-                        <span id="stressValue">-</span>
+                    <div class="analysis-actions flex flex-wrap items-center gap-3 md:justify-end">
+                        <button id="recalculateBtn" type="button" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                            <span class="material-symbols-outlined text-[18px] leading-none">refresh</span>
+                            Recalculate
+                        </button>
+                        <button id="shareReportBtn" type="button" class="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-200 hover:shadow-md">
+                            <span class="material-symbols-outlined text-[18px] leading-none">ios_share</span>
+                            Share Report
+                        </button>
                     </div>
-                    <div class="stat-box">
-                        <label>Care Priority</label>
-                        <span id="careValue">-</span>
+                </section>
+
+                <section class="analysis-kpis mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="analysis-kpi rounded-2xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="analysis-kpi-top mb-4 flex items-start justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-500">Suitability</p>
+                            <span class="material-symbols-outlined rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xl leading-none text-emerald-600">eco</span>
+                        </div>
+                        <strong class="text-4xl font-extrabold leading-none tracking-tight text-slate-900"><span id="suitabilityValue">0</span>%</strong>
                     </div>
-                </div>
+                    <div class="analysis-kpi rounded-2xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="analysis-kpi-top mb-4 flex items-start justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-500">Stress Level</p>
+                            <span class="material-symbols-outlined rounded-lg border border-amber-200 bg-amber-50 p-2 text-xl leading-none text-amber-600">warning</span>
+                        </div>
+                        <strong id="stressValue" class="text-4xl font-extrabold leading-none tracking-tight text-slate-900">-</strong>
+                    </div>
+                    <div class="analysis-kpi rounded-2xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="analysis-kpi-top mb-4 flex items-start justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-500">Care Priority</p>
+                            <span class="material-symbols-outlined rounded-lg border border-sky-200 bg-sky-50 p-2 text-xl leading-none text-sky-600">water_drop</span>
+                        </div>
+                        <strong id="careValue" class="text-4xl font-extrabold leading-none tracking-tight text-slate-900">-</strong>
+                    </div>
+                    <div class="analysis-kpi rounded-2xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="analysis-kpi-top mb-4 flex items-start justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-500">Risk Score</p>
+                            <span class="material-symbols-outlined rounded-lg border border-rose-200 bg-rose-50 p-2 text-xl leading-none text-rose-600">gpp_bad</span>
+                        </div>
+                        <strong class="text-4xl font-extrabold leading-none tracking-tight text-slate-900"><span id="riskValue">-</span>%</strong>
+                    </div>
+                </section>
 
-                <div class="status-message" id="statusMessage"></div>
+                <section class="analysis-main-grid">
+                    <article class="rounded-3xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="mb-4 flex items-center gap-2">
+                            <span
+                                class="material-symbols-outlined inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300 bg-white text-lg leading-none text-emerald-600">auto_awesome</span>
+                            <h3 class="font-['Space_Grotesk'] text-2xl font-bold leading-tight tracking-tight text-slate-900 md:text-[28px]">Smart Advisory</h3>
+                        </div>
+                        <div class="relative overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/70 p-6 shadow-sm">
+                            <span class="absolute inset-y-0 left-0 w-1.5 bg-emerald-500" aria-hidden="true"></span>
+                            <div class="pl-4">
+                                <h4 class="mb-2 text-base font-semibold leading-6 text-slate-900">Assessment Summary</h4>
+                                <p id="smartAdvisory" class="whitespace-pre-line text-[15px] font-semibold leading-7 text-slate-700">-</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-sm leading-6 text-slate-600" id="statusMessage"></div>
+                    </article>
 
-                <div class="advisory-box">
-                    <h3>Smart Advisory</h3>
-                    <p id="smartAdvisory">-</p>
-                </div>
+                    <aside class="rounded-3xl border border-slate-200/80 bg-slate-50 p-6 shadow-sm">
+                        <div class="mb-4 flex items-center gap-2">
+                            <span
+                                class="material-symbols-outlined inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300 bg-white text-lg leading-none text-emerald-600">task_alt</span>
+                            <h3 class="font-['Space_Grotesk'] text-2xl font-bold leading-tight tracking-tight text-slate-900">Recommendations</h3>
+                        </div>
+                        <ul id="recommendationList" class="space-y-3"></ul>
+                    </aside>
+                </section>
 
-                <div class="recommendation-box">
-                    <h3>Recommendations</h3>
-                    <ul id="recommendationList"></ul>
-                </div>
+                <section class="rounded-2xl border border-slate-200/80 bg-slate-50 p-5 shadow-sm">
+                    <div class="mb-4 flex items-center gap-2">
+                        <span
+                            class="material-symbols-outlined inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300 bg-white text-lg leading-none text-emerald-600">local_florist</span>
+                        <h3 class="font-['Space_Grotesk'] text-xl font-bold tracking-tight text-slate-900">Fertilizer Plan</h3>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Recommendation</p>
+                            <p id="fertilizerRecommendation" class="mt-2 text-sm font-bold text-slate-900">-</p>
+                            <p id="fertilizerName" class="mt-2 text-sm font-semibold leading-6 text-slate-700">-</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Application</p>
+                            <p id="fertilizerApplication" class="mt-2 text-sm font-medium leading-6 text-slate-700">-</p>
+                        </div>
+                    </div>
+                    <p id="fertilizerReason" class="mt-3 text-sm font-medium leading-6 text-slate-600">-</p>
+                    <a id="fertilizerBuyLink" href="#" target="_blank" rel="noopener noreferrer"
+                        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800 hover:shadow-md">
+                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm">
+                            <span class="material-symbols-outlined text-base leading-none">shopping_bag</span>
+                        </span>
+                        Purchase on IndiaMART
+                        <span class="material-symbols-outlined text-base leading-none">arrow_outward</span>
+                    </a>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200/80 bg-slate-50 p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 class="font-['Space_Grotesk'] text-xl font-bold text-slate-900">Add Plant</h3>
+                            <p class="mt-1 text-sm font-medium text-slate-600">Save this analyzed plant to your Garden list for ongoing monitoring.</p>
+                        </div>
+                        <button id="addPlantBtn" type="button"
+                            class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                            Add Plant
+                        </button>
+                    </div>
+                    <p id="addPlantStatus" class="mt-3 min-h-6 text-sm font-semibold text-slate-600" aria-live="polite"></p>
+                </section>
+
+                <section class="analysis-panel suitability-panel">
+                    <div class="suitability-head">
+                        <h3>Environmental Suitability</h3>
+                        <span class="suitability-pill"><span id="suitabilityMatchValue">0</span>% Match</span>
+                    </div>
+                    <div class="suitability-track">
+                        <div id="suitabilityFill" class="suitability-fill"></div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>

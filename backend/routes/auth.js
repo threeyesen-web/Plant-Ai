@@ -29,6 +29,12 @@ router.post("/register", async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
+      if (existingUser.authProvider === "google") {
+        return res.status(409).json({
+          message: "This email is already registered with Google Sign-In. Continue with Google to proceed.",
+          requiresGoogleSignIn: true
+        });
+      }
       return res.status(400).json({ message: "Email is already registered" });
     }
 

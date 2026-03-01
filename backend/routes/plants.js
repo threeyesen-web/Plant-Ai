@@ -30,7 +30,8 @@ function toPlantSummary(plant, latestMonitoring) {
           riskScore: latestMonitoring.riskScore,
           advisoryText: latestMonitoring.advisoryText,
           nutrientValues: latestMonitoring.nutrientValues || {},
-          inputParameters: latestMonitoring.inputParameters || {}
+          inputParameters: latestMonitoring.inputParameters || {},
+          fertilizerPlan: latestMonitoring.fertilizerPlan || {}
         }
       : null
   };
@@ -78,7 +79,8 @@ router.post("/plants", async (req, res) => {
       riskScore: initialAnalysis.riskScore,
       advisoryText: initialAnalysis.advisoryText,
       nutrientValues: initialAnalysis.nutrientValues || {},
-      inputParameters: initialAnalysis.inputParameters || {}
+      inputParameters: initialAnalysis.inputParameters || {},
+      fertilizerPlan: initialAnalysis.fertilizerPlan || {}
     });
 
     return res.status(201).json({
@@ -125,6 +127,7 @@ router.post("/plants/:plantId/monitoring", async (req, res) => {
       advisoryText,
       nutrientValues,
       inputParameters,
+      fertilizerPlan,
       dateChecked
     } = req.body;
 
@@ -161,7 +164,8 @@ router.post("/plants/:plantId/monitoring", async (req, res) => {
       riskScore,
       advisoryText,
       nutrientValues: nutrientValues || {},
-      inputParameters: inputParameters || {}
+      inputParameters: inputParameters || {},
+      fertilizerPlan: fertilizerPlan || {}
     });
 
     return res.status(201).json({ message: "Monitoring record added", record });

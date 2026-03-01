@@ -48,6 +48,16 @@ const plantMonitoringSchema = new mongoose.Schema({
     plantLocation: String,
     temperature: Number,
     humidity: Number
+  },
+  fertilizerPlan: {
+    recommendation: String,
+    fertilizerType: String,
+    fertilizerName: String,
+    searchTerm: String,
+    summary: String,
+    applicationPlan: String,
+    reason: String,
+    buyLink: String
   }
 });
 
