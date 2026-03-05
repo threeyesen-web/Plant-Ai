@@ -577,9 +577,9 @@ button:disabled {
 
 .analysis-kpis {
     display: grid;
-    grid-template-columns: repeat(4, minmax(170px, 220px));
-    justify-content: center;
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 16px;
 }
 
 .analysis-kpi {
@@ -588,7 +588,7 @@ button:disabled {
     border-radius: 16px;
     padding: 16px 18px;
     width: 100%;
-    max-width: 220px;
+    max-width: none;
 }
 
 .analysis-kpi-top {
@@ -2849,8 +2849,8 @@ body.theme-dark #resultModal .shadow-md {
     }
 
     .analysis-kpis {
-        grid-template-columns: repeat(2, minmax(170px, 220px));
-        justify-content: center;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
     }
 
     .analysis-main-grid {
@@ -2882,8 +2882,8 @@ body.theme-dark #resultModal .shadow-md {
     }
 
     .analysis-kpis {
-        grid-template-columns: minmax(170px, 220px);
-        justify-content: center;
+        grid-template-columns: 1fr;
+        justify-content: stretch;
     }
 
     .modern-app {

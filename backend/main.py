@@ -94,6 +94,7 @@ except Exception as e:
 class PlantData(BaseModel):
     region: str
     plant_type: str
+    plant_location: str = "outdoor"
     temperature: float
     humidity: float
     # These are now estimated/calculated types
@@ -103,12 +104,37 @@ class PlantData(BaseModel):
     ph: float
     rainfall: float
 
-# Regional Baselines (The "Kerala Context")
-KERALA_BASELINE = {
-    'temperature': {'min': 23.0, 'max': 32.0},
-    'humidity': {'min': 40.0, 'max': 100.0},
-    'rainfall': {'min': 150.0, 'max': 3000.0},
-    'ph': {'min': 5.0, 'max': 7.5}
+# Regional baselines for contextual stress smoothing.
+REGION_BASELINES = {
+    "kerala": {
+        "temperature": {"min": 23.0, "max": 32.0},
+        "humidity": {"min": 40.0, "max": 100.0},
+        "rainfall": {"min": 150.0, "max": 3000.0},
+        "ph": {"min": 5.0, "max": 7.5},
+    },
+    "rest_of_india": {
+        "temperature": {"min": 18.0, "max": 38.0},
+        "humidity": {"min": 20.0, "max": 90.0},
+        "rainfall": {"min": 40.0, "max": 2500.0},
+        "ph": {"min": 5.0, "max": 8.0},
+    },
+    "other": {
+        "temperature": {"min": 15.0, "max": 40.0},
+        "humidity": {"min": 15.0, "max": 95.0},
+        "rainfall": {"min": 30.0, "max": 3000.0},
+        "ph": {"min": 4.8, "max": 8.2},
+    },
+}
+
+LOCATION_BASELINES = {
+    "indoor": {
+        "temperature": {"min": 18.0, "max": 30.0},
+        "humidity": {"min": 35.0, "max": 75.0},
+        # For indoor flow rainfall acts as watering proxy from UI presets.
+        "rainfall": {"min": 20.0, "max": 250.0},
+        "ph": {"min": 5.5, "max": 7.5},
+    },
+    "outdoor": {},
 }
 
 FEATURE_LABELS = {
@@ -121,11 +147,46 @@ FEATURE_LABELS = {
     "rainfall": "Water Availability"
 }
 
+# Robust scoring controls to prevent unrealistic collapse from tiny per-crop std values.
+FEATURE_STD_FLOORS = {
+    "N": 10.0,
+    "P": 8.0,
+    "K": 8.0,
+    "temperature": 1.5,
+    "humidity": 4.0,
+    "ph": 0.35,
+    "rainfall": 20.0,
+}
+
+FEATURE_WEIGHTS = {
+    "N": 0.8,
+    "P": 0.8,
+    "K": 0.8,
+    "temperature": 1.2,
+    "humidity": 1.2,
+    "ph": 0.9,
+    "rainfall": 1.0,
+}
+
+MAX_FEATURE_Z = 4.0
+
 
 def compute_suitability(avg_z_score: float):
     # Exponential decay gives smoother degradation than a hard linear cliff.
     raw = 100 * np.exp(-0.45 * avg_z_score)
     return float(round(max(5, min(100, raw)), 1))
+
+
+def compute_risk_score(avg_z_score: float):
+    # Keep risk bands aligned with stress thresholds:
+    # Low stress (<1.0) -> 20-39, Medium (1.0-2.0) -> 40-79, High (>=2.0) -> 80-100.
+    if avg_z_score < 1.0:
+        raw = 20 + (avg_z_score * 19.0)
+    elif avg_z_score < 2.0:
+        raw = 40 + ((avg_z_score - 1.0) * 39.0)
+    else:
+        raw = 80 + ((avg_z_score - 2.0) * 10.0)
+    return int(max(0, min(100, round(raw))))
 
 
 def get_region_key(region: str):
@@ -135,6 +196,19 @@ def get_region_key(region: str):
     if region_l == "rest of india":
         return "rest_of_india"
     return "other"
+
+
+def normalize_plant_location(value: str) -> str:
+    location = str(value or "").strip().lower()
+    return "indoor" if location == "indoor" else "outdoor"
+
+
+def get_context_baseline(region: str, plant_location: str) -> dict:
+    region_key = get_region_key(region)
+    baseline = dict(REGION_BASELINES.get(region_key, REGION_BASELINES["other"]))
+    location_key = normalize_plant_location(plant_location)
+    baseline.update(LOCATION_BASELINES.get(location_key, {}))
+    return baseline
 
 
 def build_region_dosage(region: str, feature_insights: dict):
@@ -428,6 +502,7 @@ def _compute_indoor_score(plant: str, data: PlantData):
         stress_level, care_priority = "Medium", "Moderate"
     else:
         stress_level, care_priority = "High", "Urgent"
+    risk_score = compute_risk_score(avg_z_score)
 
     recommendations = []
     if z_temp >= 1.0:
@@ -444,11 +519,16 @@ def _compute_indoor_score(plant: str, data: PlantData):
     if not recommendations:
         recommendations.append("Indoor conditions are close to this plant's healthy profile. Maintain consistency.")
 
+    plant_location = normalize_plant_location(data.plant_location)
     smart_advisory = (
         "Indoor plant health risk is elevated; stabilize temperature and humidity this week."
         if stress_level in {"High", "Medium"}
         else "Indoor conditions look stable. Keep watering and light schedule consistent."
     )
+    if plant_location == "outdoor":
+        smart_advisory = (
+            f"{smart_advisory} Selected location is outdoor; indoor plant recommendations may be less accurate."
+        )
 
     time_bound_actions = {
         "today": ["Check soil moisture before next watering and avoid overcorrection."],
@@ -494,7 +574,9 @@ def _compute_indoor_score(plant: str, data: PlantData):
         "suitability_percentage": suitability,
         "stress_level": stress_level,
         "care_priority": care_priority,
-        "region_context": f"Indoor profile analysis for {data.region}",
+        "risk_score": risk_score,
+        "region_context": f"Indoor profile analysis for {data.region} ({plant_location})",
+        "location_context": plant_location,
         "smart_advisory": smart_advisory,
         "recommendations": recommendations_extended,
         "time_bound_actions": time_bound_actions,
@@ -610,20 +692,59 @@ async def api_add_plant_monitoring(plant_id: str, request: Request):
 async def api_delete_plant(plant_id: str, request: Request):
     return await _proxy_delete(f"/api/plants/{plant_id}", params=dict(request.query_params))
 
+def _build_geocode_query(city: str, state: str | None, country: str | None) -> str:
+    parts = [str(city or "").strip()]
+    if state:
+        parts.append(str(state).strip())
+    if country:
+        parts.append(str(country).strip())
+    return ",".join([p for p in parts if p])
+
+
 @app.get("/weather")
-async def get_weather(city: str):
-    api_key = "38471da0005b58938d0b54bbb311204a" 
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
-    
+async def get_weather(city: str, state: str | None = None, country: str | None = None):
+    api_key = "38471da0005b58938d0b54bbb311204a"
+    query = _build_geocode_query(city, state, country)
+    if not query:
+        raise HTTPException(status_code=400, detail="City is required")
+
+    geocode_url = (
+        "https://api.openweathermap.org/geo/1.0/direct"
+        f"?q={quote_plus(query)}&limit=1&appid={api_key}"
+    )
+
     async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch weather data")
-        
-        data = resp.json()
+        geo_resp = await client.get(geocode_url)
+        if geo_resp.status_code != 200:
+            raise HTTPException(status_code=geo_resp.status_code, detail="Failed to fetch location data")
+
+        geo = geo_resp.json()
+        if not geo:
+            raise HTTPException(status_code=404, detail="Location not found")
+
+        loc = geo[0]
+        lat = loc.get("lat")
+        lon = loc.get("lon")
+        if lat is None or lon is None:
+            raise HTTPException(status_code=404, detail="Location coordinates missing")
+
+        weather_url = (
+            "https://api.openweathermap.org/data/2.5/weather"
+            f"?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        )
+        wx_resp = await client.get(weather_url)
+        if wx_resp.status_code != 200:
+            raise HTTPException(status_code=wx_resp.status_code, detail="Failed to fetch weather data")
+
+        data = wx_resp.json()
+        name = loc.get("name")
+        state_name = loc.get("state")
+        country_code = loc.get("country")
+        location_parts = [p for p in [name, state_name, country_code] if p]
         return {
             "temperature": data["main"]["temp"],
-            "humidity": data["main"]["humidity"]
+            "humidity": data["main"]["humidity"],
+            "location": ", ".join(location_parts) if location_parts else query
         }
 
 @app.get("/crops")
@@ -640,6 +761,7 @@ def predict_growth(data: PlantData):
         raise HTTPException(status_code=500, detail="Models not loaded")
     
     plant = data.plant_type.strip().lower()
+    plant_location = normalize_plant_location(data.plant_location)
     if not plant:
         raise HTTPException(status_code=400, detail="plant is not identified")
 
@@ -686,31 +808,29 @@ def predict_growth(data: PlantData):
             'rainfall': data.rainfall
         }
         
+        context_baseline = get_context_baseline(data.region, plant_location)
         deviations = {}
         feature_insights = {}
-        total_deviation_score = 0
-        feature_count = len(features)
+        weighted_deviation_score = 0.0
+        total_weight = 0.0
         
         for feature, value in features.items():
             mean = profile[(feature, 'mean')]
             std = profile[(feature, 'std')]
             
-            if std == 0: std = 0.01 
+            if std == 0:
+                std = 0.01
+            std = max(float(std), FEATURE_STD_FLOORS.get(feature, 0.01))
             
             # --- CONTEXTUAL LOGIC START ---
             z_score = abs((value - mean) / std)
             
-            if data.region.lower() == "kerala":
-                # Apply "Contextual Forgiveness"
-                # If the value is within Kerala's "Normal Range", force Z-score to 0 (No Stress)
-                # This prevents "High Humidity" warnings in a place where 90% is normal.
-                
-                if feature in KERALA_BASELINE:
-                    baseline = KERALA_BASELINE[feature]
-                    if baseline['min'] <= value <= baseline['max']:
-                        # Strong Override: If within regional baseline, ignore generic stats.
-                        # This assumes "If it's normal for Kerala, it's safe for the plant".
-                        z_score = 0.0
+            if feature in context_baseline:
+                baseline = context_baseline[feature]
+                if baseline["min"] <= value <= baseline["max"]:
+                    # Keep some signal while reducing false alarms in expected local conditions.
+                    z_score = min(z_score, 0.35)
+            z_score = min(z_score, MAX_FEATURE_Z)
             
             # --- CONTEXTUAL LOGIC END ---
             
@@ -724,9 +844,11 @@ def predict_growth(data: PlantData):
                 "target": float(round(mean, 2)),
                 "direction": direction
             }
-            total_deviation_score += z_score
+            weight = FEATURE_WEIGHTS.get(feature, 1.0)
+            weighted_deviation_score += (z_score * weight)
+            total_weight += weight
             
-        avg_z_score = total_deviation_score / feature_count
+        avg_z_score = weighted_deviation_score / max(total_weight, 1.0)
         
         suitability = compute_suitability(avg_z_score)
 
@@ -739,6 +861,7 @@ def predict_growth(data: PlantData):
         else:
             stress_level = "High"
             care_priority = "Urgent"
+        risk_score = compute_risk_score(avg_z_score)
 
         smart_advisory, recommendations = build_recommendations(
             stress_level=stress_level,
@@ -777,7 +900,9 @@ def predict_growth(data: PlantData):
             "suitability_percentage": suitability,
             "stress_level": stress_level,
             "care_priority": care_priority,
-            "region_context": f"Analyzed/Adjusted for {data.region}",
+            "risk_score": risk_score,
+            "region_context": f"Analyzed/Adjusted for {data.region} ({plant_location})",
+            "location_context": plant_location,
             "smart_advisory": smart_advisory,
             "recommendations": recommendations_extended,
             "time_bound_actions": time_bound_actions,

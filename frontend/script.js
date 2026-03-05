@@ -3,6 +3,8 @@ const analyzeBtn = document.getElementById('analyzeBtn');
 const resultModal = document.getElementById('resultModal');
 const closeBtn = document.querySelector('.close-btn');
 const modernMain = document.querySelector('.modern-main');
+const resultsContent = document.getElementById('resultsContent');
+const shareReportContent = document.getElementById('shareReportContent');
 
 // Close Modal Logic
 if (closeBtn) {
@@ -512,21 +514,95 @@ if (logoutBtn) {
 if (shareReportBtn) {
     shareReportBtn.addEventListener('click', async () => {
         const title = analysisPlantTitle?.textContent || 'Plant Analysis';
-        const summary = `Suitability: ${suitabilityValue.textContent}% | Stress: ${stressValue.textContent} | Care: ${careValue.textContent}`;
+        const originalLabel = shareReportBtn.innerHTML;
+        shareReportBtn.disabled = true;
+        shareReportBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] leading-none">hourglass_top</span>Preparing PDF...';
 
         try {
-            if (navigator.share) {
-                await navigator.share({ title, text: summary });
+            const pdfBlob = await generateReportPdfBlob(title);
+            const fileName = `${title.replace(/\s+/g, '_').toLowerCase()}_report.pdf`;
+            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] }) && navigator.share) {
+                await navigator.share({ title, files: [pdfFile] });
                 return;
             }
+
+            const blobUrl = URL.createObjectURL(pdfBlob);
+            const anchor = document.createElement('a');
+            anchor.href = blobUrl;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+            alert('Analysis report PDF downloaded.');
+        } catch (error) {
+            console.error(error);
+            const summary = `Suitability: ${suitabilityValue.textContent}% | Stress: ${stressValue.textContent} | Care: ${careValue.textContent}`;
             if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(`${title}\n${summary}`);
-                alert('Report summary copied to clipboard.');
+                alert('PDF generation failed. Report summary copied instead.');
+            } else {
+                alert('PDF generation failed. Please try again.');
             }
-        } catch (_) {
-            // Ignore cancelled share/copy flow.
+        } finally {
+            shareReportBtn.disabled = false;
+            shareReportBtn.innerHTML = originalLabel;
         }
     });
+}
+
+async function generateReportPdfBlob(reportTitle) {
+    const exportNode = shareReportContent || resultsContent;
+    if (!exportNode) {
+        throw new Error('Report content is unavailable.');
+    }
+    if (!window.html2canvas || !window.jspdf?.jsPDF) {
+        throw new Error('PDF libraries are not loaded.');
+    }
+
+    const hiddenNodes = Array.from(exportNode.querySelectorAll('button, a'));
+    const previousVisibility = hiddenNodes.map((node) => node.style.visibility);
+    hiddenNodes.forEach((node) => {
+        node.style.visibility = 'hidden';
+    });
+
+    let canvas;
+    try {
+        canvas = await window.html2canvas(exportNode, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+    } finally {
+        hiddenNodes.forEach((node, index) => {
+            node.style.visibility = previousVisibility[index] || '';
+        });
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 18;
+    const usableWidth = pageWidth - margin * 2;
+    const imgWidth = usableWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imageData = canvas.toDataURL('image/png');
+
+    let renderedHeight = 0;
+    let pageIndex = 0;
+    while (renderedHeight < imgHeight) {
+        if (pageIndex > 0) pdf.addPage();
+        const yOffset = margin - renderedHeight;
+        pdf.addImage(imageData, 'PNG', margin, yOffset, imgWidth, imgHeight, undefined, 'FAST');
+        renderedHeight += (pageHeight - margin * 2);
+        pageIndex += 1;
+    }
+
+    pdf.setProperties({ title: `${reportTitle} Report` });
+    return pdf.output('blob');
 }
 
 if (addPlantBtn) {
@@ -543,7 +619,7 @@ if (addPlantBtn) {
         }
 
         const { result, payload, formState, weatherMeta } = latestAnalysisContext;
-        const riskScore = Math.max(0, Math.min(100, Math.round(100 - (Number(result?.suitability_percentage) || 0))));
+        const riskScore = Math.max(0, Math.min(100, Math.round(Number(result?.risk_score) || 0)));
 
         const requestBody = {
             userId,
@@ -1010,12 +1086,15 @@ form.addEventListener('submit', async (e) => {
 
     if (city) {
         try {
-            const wxResponse = await fetch(`/weather?city=${encodeURIComponent(city)}`);
+            const isIndiaRegion = region === 'Kerala' || region === 'Rest of India';
+            const includeCountry = isIndiaRegion && !city.includes(',');
+            const countryParam = includeCountry ? '&country=IN' : '';
+            const wxResponse = await fetch(`/weather?city=${encodeURIComponent(city)}${countryParam}`);
             if (wxResponse.ok) {
                 const wxData = await wxResponse.json();
                 temp = wxData.temperature;
                 humid = wxData.humidity;
-                weatherSource = `live weather from ${city}`;
+                weatherSource = `live weather from ${wxData.location || city}`;
             } else {
                 weatherSource = `fallback defaults (weather API unavailable for ${city})`;
             }
@@ -1028,6 +1107,7 @@ form.addEventListener('submit', async (e) => {
     const payload = {
         region,
         plant_type: plantType,
+        plant_location: plantLocation,
         temperature: temp,
         humidity: humid,
         rainfall: rainData,
@@ -1078,7 +1158,7 @@ form.addEventListener('submit', async (e) => {
         suitabilityFill.style.width = `${Math.max(0, Math.min(100, suitability))}%`;
         stressValue.textContent = result.stress_level;
         careValue.textContent = result.care_priority;
-        riskValue.textContent = String(Math.max(0, Math.min(100, Math.round(100 - suitability))));
+        riskValue.textContent = String(Math.max(0, Math.min(100, Math.round(Number(result.risk_score) || 0))));
 
         if (result.stress_level === 'High' || result.stress_level === 'MISMATCH') {
             document.documentElement.style.setProperty('--accent', '#ff4757');
@@ -1092,7 +1172,7 @@ form.addEventListener('submit', async (e) => {
         if (result.message) {
             statusMessage.innerHTML = `${result.message}<br><small>(${wxSource}: ${temp} C, ${humid}%)</small>`;
         } else {
-            const zInfo = typeof result.avg_z_score === 'number' ? ` | Risk score: ${result.avg_z_score}` : '';
+            const zInfo = typeof result.avg_z_score === 'number' ? ` | Avg deviation (z): ${result.avg_z_score}` : '';
             statusMessage.innerHTML = `${result.region_context}${zInfo}<br><small>(${wxSource}: ${temp} C, ${humid}%)</small>`;
         }
 
