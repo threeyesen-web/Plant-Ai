@@ -88,9 +88,13 @@ const authMessage = document.getElementById('authMessage');
 const googleButtonWrapper = document.getElementById('googleButtonWrapper');
 const passwordInput = document.getElementById('password');
 const passwordToggle = document.getElementById('passwordToggle');
+const confirmPasswordField = document.getElementById('confirmPasswordField');
+const confirmPasswordInput = document.getElementById('confirmPassword');
+const forgotPasswordLink = document.querySelector('.sproutx-forgot');
 const API_BASE = '/api';
 const USER_STORAGE_KEY = 'plant_ai_user';
 const THEME_STORAGE_KEY = 'plant_ai_theme';
+const FORGOT_PASSWORD_DEFAULT_LABEL = 'Forgot password?';
 
 let isRegister = false;
 let landingHeaderWasInView = false;
@@ -788,6 +792,60 @@ function clearAuthMessage() {
     setAuthMessage('');
 }
 
+function setForgotPasswordLoading(isLoading) {
+    if (!forgotPasswordLink) return;
+    forgotPasswordLink.textContent = isLoading ? 'Sending reset link...' : FORGOT_PASSWORD_DEFAULT_LABEL;
+    forgotPasswordLink.style.pointerEvents = isLoading ? 'none' : '';
+    forgotPasswordLink.style.opacity = isLoading ? '0.7' : '';
+}
+
+async function handleForgotPassword() {
+    if (isRegister) {
+        setAuthMessage('Switch to Login mode to reset your password.', 'info');
+        return;
+    }
+
+    const emailInput = document.getElementById('email');
+    const email = String(emailInput?.value || '').trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email) {
+        setAuthMessage('Enter your registered email first, then click Forgot password.', 'info');
+        emailInput?.focus();
+        return;
+    }
+    if (!emailPattern.test(email)) {
+        setAuthMessage('Please enter a valid email address.', 'error');
+        emailInput?.focus();
+        return;
+    }
+
+    clearAuthMessage();
+    setForgotPasswordLoading(true);
+    try {
+        const response = await fetch(`${API_BASE}/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            setAuthMessage(data.message || 'Unable to send reset link right now.', 'error');
+            return;
+        }
+        setAuthMessage(
+            data.message || 'If the email is registered, a password reset link has been sent.',
+            'info'
+        );
+    } catch (error) {
+        console.error(error);
+        setAuthMessage('Server error while sending reset link. Is backend running?', 'error');
+    } finally {
+        setForgotPasswordLoading(false);
+    }
+}
+
 function setAnalyzeButtonLoading(isLoading) {
     if (!analyzeBtn) return;
 
@@ -853,6 +911,18 @@ function logoutToLogin() {
 function applyAuthMode(registerMode) {
     isRegister = registerMode;
     const submitBtn = loginForm?.querySelector('.login-btn');
+    if (confirmPasswordField && confirmPasswordInput) {
+        confirmPasswordField.hidden = !isRegister;
+        confirmPasswordInput.required = isRegister;
+        if (!isRegister) {
+            confirmPasswordInput.value = '';
+        }
+    }
+    if (forgotPasswordLink) {
+        forgotPasswordLink.hidden = isRegister;
+        forgotPasswordLink.setAttribute('aria-hidden', isRegister ? 'true' : 'false');
+        forgotPasswordLink.tabIndex = isRegister ? -1 : 0;
+    }
     if (isRegister) {
         loginTitle.textContent = 'Create Account';
         if (loginSubtitle) loginSubtitle.textContent = 'Create an account to monitor and manage your plants.';
@@ -880,6 +950,14 @@ function bindToggleAuth() {
 
 initTheme();
 bindToggleAuth();
+
+if (forgotPasswordLink) {
+    forgotPasswordLink.textContent = FORGOT_PASSWORD_DEFAULT_LABEL;
+    forgotPasswordLink.addEventListener('click', (event) => {
+        event.preventDefault();
+        handleForgotPassword();
+    });
+}
 
 if (passwordToggle && passwordInput) {
     passwordToggle.addEventListener('click', () => {
@@ -1006,6 +1084,15 @@ if (loginForm) {
 
         const email = document.getElementById('email').value.trim().toLowerCase();
         const password = document.getElementById('password').value;
+        const confirmPassword = confirmPasswordInput?.value || '';
+        if (isRegister && password.length < 8) {
+            setAuthMessage('Password must be at least 8 characters long.', 'error');
+            return;
+        }
+        if (isRegister && password !== confirmPassword) {
+            setAuthMessage('Password and confirm password must match.', 'error');
+            return;
+        }
 
         const btn = loginForm.querySelector('.login-btn');
         btn.textContent = 'Authenticating...';

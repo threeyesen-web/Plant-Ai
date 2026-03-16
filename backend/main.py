@@ -663,9 +663,24 @@ async def api_login(request: Request):
     return await _proxy_post("/api/login", request)
 
 
+@app.post("/api/forgot-password")
+async def api_forgot_password(request: Request):
+    return await _proxy_post("/api/forgot-password", request)
+
+
 @app.get("/api/verify-email")
 async def api_verify_email(request: Request):
     return await _proxy_get_raw("/api/verify-email", params=dict(request.query_params))
+
+
+@app.get("/api/reset-password")
+async def api_reset_password_get(request: Request):
+    return await _proxy_get_raw("/api/reset-password", params=dict(request.query_params))
+
+
+@app.post("/api/reset-password")
+async def api_reset_password_post(request: Request):
+    return await _proxy_post("/api/reset-password", request)
 
 
 @app.get("/api/plants")
